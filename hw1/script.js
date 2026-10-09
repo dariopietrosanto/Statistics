@@ -147,6 +147,27 @@ function drawVisualization(sequence) {
     }
 }
 
+// Inizializza la tendina del Base Point
+function initBasePointSelector() {
+    const select = document.getElementById('basePointInput');
+    const validPoints = getAllValidPoints();
+    validPoints.forEach(pt => {
+        let option = document.createElement('option');
+        option.value = JSON.stringify(pt);
+        option.textContent = `(${pt.x}, ${pt.y})`;
+        if (pt.x === 1 && pt.y === 5) {
+            option.selected = true; // Default G
+        }
+        select.appendChild(option);
+    });
+}
+
+function getSelectedBasePoint() {
+    const select = document.getElementById('basePointInput');
+    if (!select) return G;
+    return JSON.parse(select.value);
+}
+
 // Esecuzione al click
 document.getElementById('computeBtn').addEventListener('click', () => {
     let k = parseInt(document.getElementById('privateKeyInput').value);
@@ -155,18 +176,19 @@ document.getElementById('computeBtn').addEventListener('click', () => {
         return;
     }
 
+    let currentG = getSelectedBasePoint();
     let logHtml = "";
     let sequence = [];
-    let currentPoint = G;
+    let currentPoint = currentG;
     
     logHtml += `Starting computation on curve y² = x³ + 7 (mod 17)<br>`;
-    logHtml += `G = (1, 5)<br><br>`;
+    logHtml += `Base Point = (${currentPoint.x}, ${currentPoint.y})<br><br>`;
     
     sequence.push(currentPoint);
     logHtml += `1G = (${currentPoint.x}, ${currentPoint.y})<br>`;
 
     for (let i = 2; i <= k; i++) {
-        currentPoint = pointAdd(currentPoint, G);
+        currentPoint = pointAdd(currentPoint, currentG);
         sequence.push(currentPoint);
         
         if (currentPoint === null) {
@@ -187,11 +209,13 @@ document.getElementById('computeBtn').addEventListener('click', () => {
 
 // Disegna il background al caricamento della pagina
 drawVisualization([]);
+initBasePointSelector();
 
 // Esecuzione dell'Analisi Statistica Batch
 document.getElementById('runStatsBtn')?.addEventListener('click', () => {
     let order = 0;
-    let currentPoint = G;
+    let currentG = getSelectedBasePoint();
+    let currentPoint = currentG;
     let xFrequencies = new Array(P).fill(0);
     let uniquePoints = new Set();
     
@@ -203,7 +227,7 @@ document.getElementById('runStatsBtn')?.addEventListener('click', () => {
         }
         uniquePoints.add(`${currentPoint.x},${currentPoint.y}`);
         xFrequencies[currentPoint.x]++;
-        currentPoint = pointAdd(currentPoint, G);
+        currentPoint = pointAdd(currentPoint, currentG);
     }
 
     if (order === 0) order = ">50 (No cycle found within limits)";

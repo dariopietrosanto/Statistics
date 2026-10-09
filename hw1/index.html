@@ -91,9 +91,14 @@
             <div class="layout">
                 <div class="controls">
                     <div class="input-group">
+                        <label for="basePointInput" style="display:block; font-weight:bold; margin-bottom:0.5rem;">Base Point (G):</label>
+                        <select id="basePointInput" style="margin-bottom: 1rem; width: 100%; padding: 0.5rem; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 1rem;">
+                            <!-- Popolato dinamicamente da JS -->
+                        </select>
+
                         <label for="privateKeyInput" style="display:block; font-weight:bold; margin-bottom:0.5rem;">Insert Private Key (k):</label>
-                        <input type="number" id="privateKeyInput" value="6" min="1" max="18">
-                        <button id="computeBtn">Compute Public Key (Q = kG)</button>
+                        <input type="number" id="privateKeyInput" value="6" min="1" max="18" style="width: 100%; box-sizing: border-box; margin-bottom: 1rem;">
+                        <button id="computeBtn" style="width: 100%;">Compute Public Key (Q = kG)</button>
                     </div>
                     
                     <h3 style="margin-top: 0;">Trace Log:</h3>

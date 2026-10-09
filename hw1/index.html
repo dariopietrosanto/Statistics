@@ -117,6 +117,20 @@
             <p>By repeatedly performing empirical experiments on the algorithm for different values of <code>k</code>, the following fundamental properties of the generated cyclic group can be observed.</p>
 
             <div class="stats-grid">
+                <div class="stat-card" style="grid-column: 1 / -1; background: #e8f4f8; border-color: #3498db;">
+                    <h3 style="color: #2980b9; margin-top: 0;">Interactive Empirical Analysis</h3>
+                    <p>Instead of just reading theory, let's prove it programmatically. Run a batch test generating points for <code>k = 1</code> to <code>50</code> to observe the cyclic nature and coordinate distribution in real-time.</p>
+                    <button id="runStatsBtn" style="padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Run Batch Analysis</button>
+                    
+                    <div id="statsResults" style="display: none; margin-top: 1rem; padding: 1rem; background: #fff; border: 1px solid #bdc3c7; border-radius: 4px;">
+                        <strong>Group Order (Cycle Length):</strong> <span id="statOrder">-</span><br>
+                        <strong>Unique Points Found:</strong> <span id="statUnique">-</span><br>
+                        <hr style="margin: 1rem 0; border: 0; border-top: 1px solid #eee;">
+                        <strong>X-Coordinate Distribution:</strong>
+                        <pre id="statDistX" style="background: transparent; color: #333; padding: 0; box-shadow: none; font-size: 0.8rem;"></pre>
+                    </div>
+                </div>
+
                 <div class="stat-card">
                     <h3>Uniform Distribution and Apparent Randomness</h3>
                     <p>Observing the graphical representation, the valid generated points <code>(x, y)</code> do not follow a smooth, continuous geometric interpolation (as they would in the reals $\mathbb{R}$), but rather distribute in a scattered, seemingly random pattern across the discrete plane. This behavior guarantees the absence of easily reversible spatial patterns, a fundamental property for preserving the hardness of the ECDLP.</p>

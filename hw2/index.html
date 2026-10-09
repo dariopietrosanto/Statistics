@@ -74,6 +74,23 @@
                     <br><span class="tech-box">EIP-55 (Mixed-case Encoding)</span>
                 </div>
             </div>
+            
+            <div style="background: #e8f4f8; padding: 2rem; border-radius: 6px; border-left: 4px solid #3498db; margin-top: 2rem;">
+                <h3 style="color: #2980b9; margin-top: 0;">Interactive Demo: Keccak & EIP-55 Checksum</h3>
+                <p>Enter a mock raw Ethereum address (40 hex characters) to see how the EIP-55 checksum is applied programmatically using Keccak-256 hashing.</p>
+                
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <strong>0x</strong>
+                    <input type="text" id="rawAddress" value="5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed" style="flex: 1; padding: 0.5rem; font-family: monospace; border: 1px solid #bdc3c7; border-radius: 4px;" maxlength="40">
+                    <button id="checksumBtn" style="padding: 0.6rem 1.2rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Apply Checksum</button>
+                </div>
+                
+                <div id="demoOutput" style="display:none; margin-top: 1.5rem; background: #fff; padding: 1.5rem; border-radius: 4px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); font-family: monospace;">
+                    <div><strong>Input (Lowercase):</strong> <span id="outLower"></span></div>
+                    <div style="margin-top: 0.5rem;"><strong>Keccak-256 Hash:</strong> <span id="outHash" style="color: #7f8c8d; font-size: 0.85rem;"></span></div>
+                    <div style="margin-top: 1rem; font-size: 1.2rem;"><strong>Final Checksum (EIP-55):</strong> 0x<span id="outFinal" style="color: #27ae60; font-weight: bold;"></span></div>
+                </div>
+            </div>
         </section>
 
         <section>
@@ -139,5 +156,7 @@
     <footer>
         <p>&copy; Academic Assignment - Homework 2</p>
     </footer>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>

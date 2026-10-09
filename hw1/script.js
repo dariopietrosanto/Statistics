@@ -187,3 +187,35 @@ document.getElementById('computeBtn').addEventListener('click', () => {
 
 // Disegna il background al caricamento della pagina
 drawVisualization([]);
+
+// Esecuzione dell'Analisi Statistica Batch
+document.getElementById('runStatsBtn')?.addEventListener('click', () => {
+    let order = 0;
+    let currentPoint = G;
+    let xFrequencies = new Array(P).fill(0);
+    let uniquePoints = new Set();
+    
+    // Testiamo iterativamente fino a 50 multipli per trovare il ciclo
+    for (let i = 1; i <= 50; i++) {
+        if (currentPoint === null) {
+            order = i;
+            break;
+        }
+        uniquePoints.add(`${currentPoint.x},${currentPoint.y}`);
+        xFrequencies[currentPoint.x]++;
+        currentPoint = pointAdd(currentPoint, G);
+    }
+
+    if (order === 0) order = ">50 (No cycle found within limits)";
+    
+    let distStr = "";
+    for (let x = 0; x < P; x++) {
+        let bars = "█".repeat(xFrequencies[x]);
+        distStr += `X=${x.toString().padStart(2, '0')} | ${bars} (${xFrequencies[x]})\n`;
+    }
+
+    document.getElementById('statsResults').style.display = 'block';
+    document.getElementById('statOrder').textContent = order;
+    document.getElementById('statUnique').textContent = uniquePoints.size;
+    document.getElementById('statDistX').textContent = distStr;
+});

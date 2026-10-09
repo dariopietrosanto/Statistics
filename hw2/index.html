@@ -151,6 +151,27 @@
                 </div>
             </div>
         </section>
+        <section>
+            <h2>5. Statistical Properties & Probabilities</h2>
+            <p>To directly address the statistical properties of the pipeline, here is a purely probabilistic analysis of the involved cryptographic primitives:</p>
+
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <h3 style="margin-top:0; color:#27ae60;">BIP-39 (Mnemonic Entropy)</h3>
+                    <p>A 12-word phrase is drawn from a standardized dictionary of 2048 words. The possible combinations are $2048^{12} = 2^{132}$. After subtracting 4 bits for the checksum, <strong>128 bits of pure entropy</strong> remain. Statistically, generating or guessing another user's active phrase is equivalent to finding a specific atom in the observable universe: the probability of a random collision is virtually zero.</p>
+                </div>
+                
+                <div class="concept-card">
+                    <h3 style="margin-top:0; color:#27ae60;">Keccak-256 (Collision Resistance)</h3>
+                    <p>The 256-bit output of the Keccak hash function acts as a Random Oracle. Due to the <em>Birthday Paradox</em>, the statistical probability of finding two different Public Keys that produce the exact same 20-byte Ethereum address (a collision) requires attempting approximately $2^{80}$ hashes (since the address is truncated to 160 bits). It remains computationally infeasible.</p>
+                </div>
+
+                <div class="concept-card">
+                    <h3 style="margin-top:0; color:#27ae60;">EIP-55 (Typo Detection Probability)</h3>
+                    <p>The EIP-55 checksum uses the 40 nibbles (half-bytes) of the hash to determine the capitalization of the address string. On average, a 40-character hex address contains 15 alphabetic letters (a-f). The statistical probability that a mistyped address randomly generates the exact same valid uppercase/lowercase pattern is $(1/2)^{15}$, or about <strong>1 in 32,000</strong>. This means EIP-55 catches 99.996% of human typing errors.</p>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HMWK 2: Ethereum Wallet Pipeline</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .pipeline-container { display: flex; flex-direction: column; align-items: center; margin: 3rem 0; font-family: 'Consolas', monospace; }
+        .pipeline-step { background: #3498db; color: white; padding: 1.2rem; border-radius: 6px; margin: 0.5rem; text-align: center; width: 100%; max-width: 500px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .arrow { font-size: 1.8rem; color: #2c3e50; margin: 0.5rem 0; }
+        .tech-box { font-size: 0.9rem; background: #2c3e50; display: inline-block; padding: 0.3rem 0.6rem; border-radius: 4px; margin-top: 0.8rem; letter-spacing: 0.5px;}
+        .timeline { border-left: 4px solid #3498db; padding-left: 2rem; margin: 3rem 0; position: relative; }
+        .timeline-item { margin-bottom: 2rem; position: relative; }
+        .timeline-item::before { content: ''; position: absolute; left: -41px; top: 4px; width: 16px; height: 16px; background: #fff; border: 4px solid #3498db; border-radius: 50%; box-shadow: 0 0 0 3px rgba(52,152,219,0.2); }
+        .date { font-weight: bold; color: #2980b9; font-size: 1.1rem; display: block; margin-bottom: 0.3rem;}
+        .concept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+        .concept-card { background: #fff; padding: 1.5rem; border-left: 4px solid #e74c3c; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Homework 2: Ethereum Wallet Pipeline</h1>
+        <p>Hashing, Key Derivation and Cryptographic Primitives</p>
+    </header>
+
+    <main>
+        <a href="../index.html" style="display:inline-block; margin-bottom: 2rem; color: #3498db; text-decoration: none; font-weight: bold;">&larr; Back to Dashboard</a>
+
+        <section>
+            <h2>1. Objective of the Assignment</h2>
+            <p>
+                This section examines the <em>Practical Cryptographic Pipeline</em> adopted in Ethereum Wallets (such as MetaMask or Rabby) for generating a public address starting from a mnemonic phrase. The architecture, which combines various cryptographic algorithms (Key Derivation, Hashing, Public-Key Cryptography), will be discussed, providing engineering justification as to why the system requires multiple primitives in succession rather than a single universal algorithm.
+            </p>
+        </section>
+
+        <section>
+            <h2>2. The Pipeline (From Mnemonic to Ethereum Address)</h2>
+            <p>The standard flow for modern Hierarchical Deterministic (HD) wallets is outlined below.</p>
+            
+            <div class="pipeline-container">
+                <div class="pipeline-step">
+                    Mnemonic Phrase
+                    <br><span class="tech-box">BIP-39 (Sentence Generation)</span>
+                </div>
+                <div class="arrow">&darr;</div>
+                
+                <div class="pipeline-step">
+                    Seed (512-bit)
+                    <br><span class="tech-box">BIP-39 (PBKDF2 HMAC-SHA512)</span>
+                </div>
+                <div class="arrow">&darr;</div>
+                
+                <div class="pipeline-step">
+                    Master Private Key (256-bit scalar)
+                    <br><span class="tech-box">BIP-32 / BIP-44 (HD Derivation Path: m/44'/60'/0'/0)</span>
+                </div>
+                <div class="arrow">&darr;</div>
+                
+                <div class="pipeline-step">
+                    Public Key (Point on the Curve)
+                    <br><span class="tech-box">secp256k1 (Elliptic-Curve Scalar Multiplication)</span>
+                </div>
+                <div class="arrow">&darr;</div>
+                
+                <div class="pipeline-step">
+                    Raw Ethereum Address (20 Bytes)
+                    <br><span class="tech-box">Keccak-256 (Hashing the Public Key bytes)</span>
+                </div>
+                <div class="arrow">&darr;</div>
+                
+                <div class="pipeline-step" style="background:#27ae60;">
+                    Checksummed Address
+                    <br><span class="tech-box">EIP-55 (Mixed-case Encoding)</span>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>3. Analysis of Cryptographic Primitives (Why separate systems?)</h2>
+            <p>Each step serves a radically different engineering and statistical purpose. A single "universal" algorithm could never simultaneously satisfy the requirements of User Experience (UX), mathematical hierarchy, asymmetric derivation, and fixed-size compression.</p>
+
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <h3 style="margin-top:0; color:#e74c3c;">Key Generation vs Key Derivation (BIP-32/39/44)</h3>
+                    <p><strong>Generation</strong> provides pure entropy (pseudorandom statistics) by producing the initial seed (BIP-39). <strong>Derivation</strong> (BIP-32/44), on the other hand, is a deterministic tree-like process that uses HMAC hashing functions to generate infinitely many sub-accounts (Private Keys) from that single root. It selects a specific key in the probability space without exposing the root.</p>
+                </div>
+                
+                <div class="concept-card">
+                    <h3 style="margin-top:0; color:#e74c3c;">Public-Key Cryptography (secp256k1)</h3>
+                    <p>Once the Private Key is derived, <strong>secp256k1</strong> (ECC) allows for the calculation of the associated Public Key by leveraging modular arithmetic (Scalar Multiplication). This step is necessary to enable <em>Digital Signatures</em>, introducing the vital asymmetric "trapdoor" mathematical relationship required to authorize transactions on the blockchain.</p>
+                </div>
+
+                <div class="concept-card">
+                    <h3 style="margin-top:0; color:#e74c3c;">Hashing (Keccak-256)</h3>
+                    <p>The raw Ethereum Public Key consists of 64 bytes. <strong>Keccak-256</strong> performs the final <em>scrambling</em>, deterministically compressing it to extract only the resulting last 20 bytes. This removes the algebraic structure of the elliptic curve, offering pre-image resistance and drastically reducing on-chain storage costs (gas).</p>
+                </div>
+
+                <div class="concept-card">
+                    <h3 style="margin-top:0; color:#e74c3c;">Checksums and Encoding (EIP-55)</h3>
+                    <p>The final step has no purely cryptographic value but serves application security. <strong>EIP-55</strong> maps the Keccak-256 hash of the address onto the address letters themselves: if the n-th bit of the hash is 1, the corresponding letter is capitalized. It acts as a statistical <em>Checksum</em> that catches typing errors with an extremely negligible false positive rate.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>4. Historical and Chronological Context (Timeline)</h2>
+            <p>The technologies adopted in the Ethereum ecosystem reflect standardized layers built over decades of cryptographic evolution.</p>
+
+            <div class="timeline">
+                <div class="timeline-item">
+                    <span class="date">1977 | RSA</span>
+                    Introduction of modern asymmetric cryptography (Public-Key Cryptography). Based on prime factorization, it laid the foundation for modern digital signatures, although it has now been superseded (in blockchain) by elliptic curves.
+                </div>
+                <div class="timeline-item">
+                    <span class="date">2001 | SHA-2 / SHA-512</span>
+                    NIST standardizes the new families of Hash functions. Highly resistant to collisions, they still dominate Bitcoin's Proof-of-Work (PoW) today.
+                </div>
+                <div class="timeline-item">
+                    <span class="date">2012 | BIP-32</span>
+                    The advent of <em>Hierarchical Deterministic Wallets</em>, making it possible to manage an infinite hierarchical tree of keys starting from a single Master Node.
+                </div>
+                <div class="timeline-item">
+                    <span class="date">2013 | BIP-39</span>
+                    The <em>Mnemonic Code</em> standard is introduced, revolutionizing UX. Complex keys are statistically represented using 12-24 words from a standardized dictionary of 2048 terms.
+                </div>
+                <div class="timeline-item">
+                    <span class="date">2014 | BIP-44</span>
+                    Standardizes the derivation paths for multi-account HD wallets (e.g., <code>m/purpose'/coin_type'/account'/change/address_index</code>), resolving collisions between different blockchains in the same wallet.
+                </div>
+                <div class="timeline-item">
+                    <span class="date">2015-2016 | Keccak vs SHA-3 & EIP-55</span>
+                    NIST standardizes SHA-3 (based on Keccak). Around the same time, Ethereum is born and adopts the <strong>original Keccak</strong> (not NIST's SHA-3, which altered the padding and <em>domain-separation</em>). In 2016, Vitalik Buterin introduces <strong>EIP-55</strong>, a backward-compatible trick to add a checksum to historically "flat" Ethereum addresses.
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; Academic Assignment - Homework 2</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HMWK 1: Public-Key Cryptography (Toy Curve)</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .layout { display: flex; gap: 2rem; flex-wrap: wrap; align-items: stretch; margin-top: 2rem;}
+        .controls { flex: 1; min-width: 300px; display: flex; flex-direction: column; }
+        .visualization { flex: 1; min-width: 300px; text-align: center; }
+        canvas { background: #fff; border: 1px solid #bdc3c7; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        .log-box { background: #2c3e50; color: #ecf0f1; padding: 1rem; border-radius: 4px; font-family: 'Consolas', monospace; flex-grow: 1; overflow-y: auto; font-size: 0.9rem; line-height: 1.4; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);}
+        .highlight-key { color: #e74c3c; font-weight: bold; font-size: 1.1rem; }
+        .input-group { background: #f8f9fa; padding: 1.5rem; border-radius: 4px; border-left: 4px solid #3498db; margin-bottom: 1rem; }
+        .input-group input { padding: 0.5rem; width: 80px; margin-right: 1rem; border: 1px solid #bdc3c7; border-radius: 4px; font-size: 1rem; }
+        .input-group button { padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        .input-group button:hover { background: #2980b9; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+        .stat-card { background: #ffffff; padding: 1.5rem; border-radius: 4px; border: 1px solid #e1e8ed; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Homework 1: Public-Key Cryptography</h1>
+        <p>Public Key Generation via Elliptic-Curve Scalar Multiplication</p>
+    </header>
+
+    <main>
+        <a href="../index.html" style="display:inline-block; margin-bottom: 1rem; color: #3498db; text-decoration: none; font-weight: bold;">&larr; Back to Dashboard</a>
+
+        <section>
+            <h2>1. Introduction and Mathematical Specifications</h2>
+            <p>
+                The objective of this assignment is to conceptually demonstrate how public-key cryptography based on elliptic curves (ECC) operates. Elliptic-curve scalar multiplication acts as a cryptographic <em>One-Way Function</em> (relying on the Elliptic Curve Discrete Logarithm Problem - ECDLP).
+            </p>
+            <p>
+                To fully understand the underlying mechanics without relying on abstracted libraries, an interactive application has been implemented based on a <strong>Toy Curve</strong> defined over a small finite field $\mathbb{F}_{17}$.
+            </p>
+            <ul>
+                <li><strong>Curve Equation:</strong> <code>y² &equiv; x³ + 7 (mod 17)</code></li>
+                <li><strong>Base Point (Generator):</strong> <code>G = (1, 5)</code></li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>2. Implementation Details (Background Algorithm)</h2>
+            <p>
+                This web application does not use any external cryptographic libraries. The entire modular arithmetic required for point addition on the projective plane has been implemented from scratch in JavaScript.
+                Below is an excerpt of the core logical implementation operating behind the scenes:
+            </p>
+            <pre><code><span class="comment">// 1. Function for Modular Multiplicative Inverse (Mod 17)</span>
+<span class="keyword">function</span> <span class="function">modInverse</span>(a, m) {
+    a = <span class="function">mod</span>(a, m);
+    <span class="keyword">for</span> (<span class="keyword">let</span> x = 1; x &lt; m; x++) {
+        <span class="keyword">if</span> (<span class="function">mod</span>(a * x, m) === 1) <span class="keyword">return</span> x;
+    }
+    <span class="keyword">return null</span>;
+}
+
+<span class="comment">// 2. Point Addition Algorithm (Addition / Doubling)</span>
+<span class="keyword">function</span> <span class="function">pointAdd</span>(P1, P2) {
+    <span class="comment">/* Point at Infinity logic omitted for brevity... */</span>
+    <span class="keyword">let</span> m; <span class="comment">// Slope</span>
+
+    <span class="keyword">if</span> (P1.x === P2.x && P1.y === P2.y) {
+        <span class="comment">// Point Doubling (P1 + P1)</span>
+        <span class="keyword">let</span> num = <span class="function">mod</span>(3 * P1.x * P1.x + A, P);
+        <span class="keyword">let</span> den = <span class="function">modInverse</span>(2 * P1.y, P);
+        m = <span class="function">mod</span>(num * den, P);
+    } <span class="keyword">else</span> {
+        <span class="comment">// Point Addition (P1 + P2)</span>
+        <span class="keyword">let</span> num = <span class="function">mod</span>(P2.y - P1.y, P);
+        <span class="keyword">let</span> den = <span class="function">modInverse</span>(P2.x - P1.x, P);
+        m = <span class="function">mod</span>(num * den, P);
+    }
+
+    <span class="keyword">let</span> x3 = <span class="function">mod</span>(m * m - P1.x - P2.x, P);
+    <span class="keyword">let</span> y3 = <span class="function">mod</span>(m * (P1.x - x3) - P1.y, P);
+    
+    <span class="keyword">return</span> { <span class="string">x</span>: x3, <span class="string">y</span>: y3 };
+}</code></pre>
+        </section>
+
+        <section>
+            <h2>3. Interactive Simulation (Private Key &rarr; Public Key)</h2>
+            <p>
+                Using the panel below, you can input a scalar <code>k</code> (Private Key). 
+                The algorithm will iteratively compute <code>1G, 2G, ..., kG</code>, printing the result of each addition and visually tracing the path (<em>Guru Level</em>) on the 17x17 discrete grid.
+            </p>
+            <div class="layout">
+                <div class="controls">
+                    <div class="input-group">
+                        <label for="privateKeyInput" style="display:block; font-weight:bold; margin-bottom:0.5rem;">Insert Private Key (k):</label>
+                        <input type="number" id="privateKeyInput" value="6" min="1" max="18">
+                        <button id="computeBtn">Compute Public Key (Q = kG)</button>
+                    </div>
+                    
+                    <h3 style="margin-top: 0;">Trace Log:</h3>
+                    <div class="log-box" id="logBox">
+                        <span class="comment">// Awaiting input...</span>
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <h3 style="margin-top: 0;">Visual Representation</h3>
+                    <canvas id="curveCanvas" width="510" height="510"></canvas>
+                    <p style="font-size: 0.85rem; color: #7f8c8d; text-align:center;">
+                        Grid &mathbb;F<sub>17</sub>: Grey dots indicate valid curve points. Blue lines trace the successive scalar additions.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>4. Statistical Exploration</h2>
+            <p>By repeatedly performing empirical experiments on the algorithm for different values of <code>k</code>, the following fundamental properties of the generated cyclic group can be observed.</p>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Uniform Distribution and Apparent Randomness</h3>
+                    <p>Observing the graphical representation, the valid generated points <code>(x, y)</code> do not follow a smooth, continuous geometric interpolation (as they would in the reals $\mathbb{R}$), but rather distribute in a scattered, seemingly random pattern across the discrete plane. This behavior guarantees the absence of easily reversible spatial patterns, a fundamental property for preserving the hardness of the ECDLP.</p>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Cyclic Nature and Frequency of Values</h3>
+                    <p>The analysis shows that the point <code>18G</code> yields the Point at Infinity ($\mathcal{O}$), and <code>19G</code> returns to <code>(1, 5)</code>. The generated subgroup has an order of 18 (a result consistent with Hasse's Theorem). Every value within the finite domain appears with a frequency of exactly 1 per cycle: there are no collisions before the orbit (period) is fully completed.</p>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Correlation and "Avalanche-like behaviour"</h3>
+                    <p>In ECC, moving from <code>k=6</code> to <code>k=7</code> entails algebraically adding the generator <code>G</code> to the current point. The Euclidean distance between the two consecutive outputs is highly unpredictable. However, this is a <strong>strongly algebraic</strong> (homomorphic) correlation, completely different from the true "Avalanche Effect" performed by Hash functions (where one flipped input bit statistically flips 50% of the output bits regardless of linear arithmetic).</p>
+                </div>
+
+                <div class="stat-card">
+                    <h3>Cryptographic One-Way Function vs Hash Function</h3>
+                    <p>Based on these findings, the architectural distinction becomes clear:<br>
+                    <strong>Hash Functions (e.g., SHA-2)</strong> compress data of arbitrary length into a fixed-size output devoid of exploitable mathematical structure. They provide collision and pre-image resistance, acting like random oracles.<br>
+                    <strong>ECC Scalar Multiplication</strong>, instead, maps a fixed-size input (a 256-bit scalar) to a fixed-size domain (256-bit coordinates). It is deterministic and computationally intractable to reverse (One-Way), but its purpose is to possess a precise algebraic "trapdoor" that allows for complex interrelated calculations (such as ECDSA/Schnorr Digital Signatures)—an operation mathematically impossible with a simple Hash.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; Academic Assignment - Homework 1</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -94,29 +94,34 @@
         </section>
 
         <section>
-            <h2>3. Analysis of Cryptographic Primitives (Why separate systems?)</h2>
-            <p>Each step serves a radically different engineering and statistical purpose. A single "universal" algorithm could never simultaneously satisfy the requirements of User Experience (UX), mathematical hierarchy, asymmetric derivation, and fixed-size compression.</p>
+            <h2>3. Why Does the Pipeline Use Several Different Techniques Instead of One?</h2>
+            <p>A frequent question is why Ethereum relies on a patchwork of different cryptographic algorithms rather than a single "universal" formula. The answer is that each protocol serves a radically different engineering and statistical purpose in the overall system:</p>
 
             <div class="concept-grid">
                 <div class="concept-card">
-                    <h3 style="margin-top:0; color:#e74c3c;">Key Generation vs Key Derivation (BIP-32/39/44)</h3>
-                    <p><strong>Generation</strong> provides pure entropy (pseudorandom statistics) by producing the initial seed (BIP-39). <strong>Derivation</strong> (BIP-32/44), on the other hand, is a deterministic tree-like process that uses HMAC hashing functions to generate infinitely many sub-accounts (Private Keys) from that single root. It selects a specific key in the probability space without exposing the root.</p>
+                    <h3 style="margin-top:0; color:#e74c3c;">BIP-39 / BIP-32 / BIP-44 &rarr; Key Management</h3>
+                    <p><strong>Generation vs Derivation:</strong> BIP-39 provides pure entropy (pseudorandom statistics) by producing the initial seed. BIP-32/44 derivation is a deterministic tree-like process that uses HMAC hashing to generate infinitely many sub-accounts from that single root, allowing users to back up infinite addresses with just 12 words.</p>
                 </div>
                 
                 <div class="concept-card">
-                    <h3 style="margin-top:0; color:#e74c3c;">Public-Key Cryptography (secp256k1)</h3>
-                    <p>Once the Private Key is derived, <strong>secp256k1</strong> (ECC) allows for the calculation of the associated Public Key by leveraging modular arithmetic (Scalar Multiplication). This step is necessary to enable <em>Digital Signatures</em>, introducing the vital asymmetric "trapdoor" mathematical relationship required to authorize transactions on the blockchain.</p>
+                    <h3 style="margin-top:0; color:#e74c3c;">secp256k1 &rarr; Public-Key Cryptography</h3>
+                    <p>ECC provides the mathematical foundation for the public/private key relationship. This step is necessary to enable <em>Digital Signatures</em>, introducing the vital asymmetric "trapdoor" relationship required to authorize and verify transactions on the blockchain.</p>
                 </div>
 
                 <div class="concept-card">
-                    <h3 style="margin-top:0; color:#e74c3c;">Hashing (Keccak-256)</h3>
-                    <p>The raw Ethereum Public Key consists of 64 bytes. <strong>Keccak-256</strong> performs the final <em>scrambling</em>, deterministically compressing it to extract only the resulting last 20 bytes. This removes the algebraic structure of the elliptic curve, offering pre-image resistance and drastically reducing on-chain storage costs (gas).</p>
+                    <h3 style="margin-top:0; color:#e74c3c;">Keccak-256 &rarr; Hashing</h3>
+                    <p>The raw Public Key consists of 64 bytes. Keccak-256 performs the final scrambling, compressing it deterministically to extract only the last 20 bytes. It destroys the algebraic structure of the elliptic curve, offering pre-image resistance and drastically reducing on-chain storage costs.</p>
                 </div>
 
                 <div class="concept-card">
-                    <h3 style="margin-top:0; color:#e74c3c;">Checksums and Encoding (EIP-55)</h3>
-                    <p>The final step has no purely cryptographic value but serves application security. <strong>EIP-55</strong> maps the Keccak-256 hash of the address onto the address letters themselves: if the n-th bit of the hash is 1, the corresponding letter is capitalized. It acts as a statistical <em>Checksum</em> that catches typing errors with an extremely negligible false positive rate.</p>
+                    <h3 style="margin-top:0; color:#e74c3c;">EIP-55 &rarr; Checksums & Encoding</h3>
+                    <p>This final step serves application security rather than cryptography. EIP-55 maps the hash of the address onto its own letters to create a mixed-case checksum. It statistically catches human typing errors without changing the underlying hexadecimal value.</p>
                 </div>
+            </div>
+            
+            <div style="margin-top: 3rem; background: #2c3e50; color: #ecf0f1; padding: 1.5rem; border-radius: 6px;">
+                <h3 style="margin-top: 0; color: #3498db;">Distinction: SHA-2 / SHA-512 vs Keccak / SHA-3</h3>
+                <p style="margin-bottom: 0;">They are related historically and both belong to the family of cryptographic hash functions. However, SHA-2 (standardized in 2001) relies on the older Merkle-Damgård construction, while Keccak introduced the highly resilient <em>Sponge Construction</em>. Keccak was eventually selected by NIST as the underlying design for SHA-3 (2015). It is crucial to note that <strong>Ethereum uses Keccak-256, which is not identical to the standardized SHA3-256 function</strong>. This is because NIST altered the padding and domain-separation conventions right before finalizing the SHA-3 standard, whereas Ethereum had already adopted the original Keccak padding.</p>
             </div>
         </section>
 

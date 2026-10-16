@@ -3,38 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cryptography Homework Portfolio</title>
+    <title>Cryptography & Statistics Portfolio - Dario Pietrosanto</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>Cryptography & Statistics</h1>
-        <p>Homework Portfolio - Dario Pietrosanto (2055042)</p>
+        <h1>Applied Cryptography & Statistics</h1>
+        <p>Master's Degree Course — Academic Portfolio & Research Lab</p>
+        <p style="margin-top: 0.5rem; font-size: 1.1rem; color: #ecf0f1;"><strong>Student:</strong> Dario Pietrosanto &nbsp;|&nbsp; <strong>ID:</strong> 2055042</p>
     </header>
 
     <main>
-        <h2>List of Assignments</h2>
-        <p>Select a homework to view the interactive project and associated research.</p>
+        <h2>Interactive Assignments & Research Projects</h2>
+        <p>This portfolio contains practical implementations, statistical cryptanalysis tools, and formal theoretical essays developed for the Cryptography and Applied Statistics curriculum. Every module runs entirely in-browser without external cryptographic abstractions.</p>
         
         <div class="hw-grid">
             <!-- Homework 1 -->
             <a href="hw1/index.html" class="hw-card">
                 <h3>Homework 1</h3>
-                <p><strong>Topic:</strong> Public-Key Cryptography, Toy Curve (Mod 17), Scalar Multiplication & Statistical Properties.</p>
+                <p><strong>Topic:</strong> Public-Key Cryptography, Toy Curve $y^2 \equiv x^3 + 7 \pmod{17}$, Point Addition/Doubling, Interactive 2D Grid Visualizer, and Batch Statistical Dispersion Analysis.</p>
                 <span class="status completed">Completed</span>
             </a>
 
             <!-- Homework 2 -->
             <a href="hw2/index.html" class="hw-card">
                 <h3>Homework 2</h3>
-                <p><strong>Topic:</strong> Wallet Pipeline (Seed to ETH Address) & Cryptographic Primitives (BIP39, BIP32, Keccak).</p>
+                <p><strong>Topic:</strong> Ethereum Wallet Pipeline: Mnemonic Entropy (BIP-39), Hierarchical Deterministic Derivation (BIP-32/44), secp256k1, Keccak-256 Hashing, and EIP-55 Checksum Verification.</p>
+                <span class="status completed">Completed</span>
+            </a>
+
+            <!-- Homework 3 -->
+            <a href="hw3/index.html" class="hw-card" style="border-color: #3498db; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.15);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0;">Homework 3</h3>
+                    <span style="background:#27ae60; color:white; font-size:0.75rem; padding:2px 8px; border-radius:10px; font-weight:bold;">NEW</span>
+                </div>
+                <p style="margin-top:0.8rem;"><strong>Topic:</strong> Toy ECC Cryptosystem vs. Caesar Cipher. Comprehensive comparative analysis, Chi-Square ($\chi^2$) statistical cryptanalysis with sample size convergence, N-gram scoring, and restricted-space ECDLP attacks.</p>
                 <span class="status completed">Completed</span>
             </a>
         </div>
+
+        <section style="margin-top: 3rem; background: #ffffff; padding: 1.5rem; border-radius: 8px; border: 1px solid #e1e8ed;">
+            <h3 style="margin-top:0; color:#2c3e50;">Methodology & System Architecture</h3>
+            <p>All cryptographic algorithms—ranging from modular inverses and group laws on elliptic curves to Chi-Square letter frequency analysis and algebraic discrete logarithm attacks—are implemented in pure, un-obfuscated JavaScript. This allows immediate inspection of mathematical mechanisms, statistical invariants, and algorithmic complexity directly within the browser runtime.</p>
+        </section>
     </main>
 
     <footer>
-        <p>Project Repository for the Cryptography Course.</p>
+        <p>Dario Pietrosanto (2055042) — Academic Cryptography & Statistics Repository &copy; 2026</p>
     </footer>
 </body>
 </html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HMWK 3: Toy ECC vs Caesar Cipher & Statistical Cryptanalysis</title>
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .layout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+        .panel { background: #ffffff; padding: 1.5rem; border-radius: 6px; border: 1px solid #e1e8ed; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .control-group { margin-bottom: 1rem; }
+        .control-group label { display: block; font-weight: bold; margin-bottom: 0.3rem; color: #2c3e50; font-size: 0.95rem; }
+        .control-group input, .control-group select, .control-group textarea { width: 100%; padding: 0.6rem; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; font-size: 0.95rem; }
+        .btn-primary { background: #3498db; color: white; border: none; padding: 0.7rem 1.4rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; font-size: 0.95rem; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-danger { background: #e74c3c; color: white; border: none; padding: 0.7rem 1.4rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; font-size: 0.95rem; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-secondary { background: #7f8c8d; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-right: 0.5rem; margin-bottom: 0.5rem; }
+        .btn-secondary:hover { background: #636e72; }
+        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: bold; background: #e8f4f8; color: #2980b9; }
+        .output-box { background: #2c3e50; color: #ecf0f1; padding: 1rem; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.9rem; overflow-x: auto; white-space: pre-wrap; margin-top: 0.8rem; }
+        .comparison-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.95rem; }
+        .comparison-table th, .comparison-table td { border: 1px solid #dce4ec; padding: 0.75rem; text-align: left; }
+        .comparison-table th { background: #2c3e50; color: #ffffff; }
+        .comparison-table tr:nth-child(even) { background: #f8f9fa; }
+        canvas { background: #ffffff; border: 1px solid #bdc3c7; border-radius: 4px; width: 100%; max-width: 800px; display: block; margin: 1rem auto; }
+        .stat-callout { background: #e8f8f5; border-left: 5px solid #27ae60; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
+        .alert-callout { background: #fdf2e9; border-left: 5px solid #e67e22; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Homework 3: Applied Cryptography & Statistical Cryptanalysis</h1>
+        <p>Toy ECC Cryptosystem vs Caesar Cipher — Frequency Analysis, &Chi;&sup2; Goodness-of-Fit & Discrete Logarithm Attacks</p>
+        <p style="margin-top: 0.5rem; font-size: 1rem; color: #ecf0f1;"><strong>Student:</strong> Dario Pietrosanto (2055042) &nbsp;|&nbsp; Master's Degree Course in Applied Statistics & Cybersecurity</p>
+    </header>
+
+    <main>
+        <a href="../index.html" style="display:inline-block; margin-bottom: 1.5rem; color: #3498db; text-decoration: none; font-weight: bold;">&larr; Back to Dashboard</a>
+
+        <!-- EXECUTIVE SUMMARY -->
+        <section class="panel" style="background:#fcfcfc; border-left: 4px solid #3498db; margin-bottom: 2rem;">
+            <h2 style="margin-top:0; border:none; padding:0;">Executive Summary & Research Directives</h2>
+            <p>
+                This project implements and formally evaluates two contrasting cryptographic paradigms: an <strong>Asymmetric Toy Cryptosystem</strong> built upon the <code>secp256k1</code> elliptic curve defined over a small prime field $\mathbb{F}_{17}$, and a classical <strong>Symmetric Caesar Cipher</strong> in $\mathbb{Z}_{26}$. 
+            </p>
+            <p>
+                Beyond providing working browser implementations of both ciphers, this paper investigates their mathematical mechanisms, key spaces, and statistical distributions. We demonstrate how <strong>Statistical Cryptanalysis</strong> (via Pearson's Chi-Square $\chi^2$ Goodness-of-Fit and N-gram Markov scoring) can recover Caesar keys from natural language redundancy, and contrast it with an <strong>Algebraic Key Recovery Attack</strong> that exploits the restricted scalar space of the toy elliptic curve.
+            </p>
+        </section>
+
+        <!-- 1. TOY ECC SCHEME -->
+        <section>
+            <h2>1. The Toy Elliptic Curve Cryptosystem</h2>
+            <p>
+                Following the mathematical framework formulated in Homework 1, we utilize the <code>secp256k1</code> Weierstraß equation $y^2 \equiv x^3 + 7 \pmod{17}$ with $a=0, b=7$ over the Galois field $\mathbb{F}_{17}$. The standard base generator is $G = (1, 5)$, which spans a cyclic subgroup of order $n=9$.
+            </p>
+
+            <h3>Algorithmic Stages and the Role of Keys</h3>
+            <ul>
+                <li>
+                    <strong>Key Generation (Receiver - Bob):</strong>
+                    Bob selects a private scalar $d_B \in [1, n-1]$. This scalar serves as Bob's secret trapdoor. 
+                    Bob computes his Public Key point $Q_B = d_B \cdot G$ via scalar point multiplication. $Q_B$ is published openly.
+                </li>
+                <li>
+                    <strong>Ephemeral Key Generation & Encapsulation (Sender - Alice):</strong>
+                    To achieve semantic security (IND-CPA), Alice does not use a static key. For each transmission, Alice generates a fresh, uniform pseudorandom <em>ephemeral private nonce</em> $k \in [1, n-1]$. 
+                    Alice computes the ephemeral public point $C_1 = k \cdot G$.
+                </li>
+                <li>
+                    <strong>Shared Secret Derivation & Encryption:</strong>
+                    Alice calculates the shared secret point $S = k \cdot Q_B = k \cdot (d_B \cdot G)$. 
+                    Using the coordinates of $S$, Alice derives an algebraic stream mask $K = ((x_S \cdot 7 + y_S \cdot 11) \bmod 25) + 1$, and produces the ciphertext string $C_2$. The complete transmitted message is the tuple $(C_1, C_2)$.
+                </li>
+                <li>
+                    <strong>Decapsulation & Decryption (Bob):</strong>
+                    Upon receiving $(C_1, C_2)$, Bob evaluates $S = d_B \cdot C_1 = d_B \cdot (k \cdot G) = k \cdot (d_B \cdot G)$. Because scalar multiplication is commutative over abelian groups, Bob obtains the identical shared point $S$ without ever learning Alice's nonce $k$. Bob computes the inverse mask and recovers the exact plaintext.
+                </li>
+            </ul>
+
+            <!-- INTERACTIVE TOY ECC SIMULATOR -->
+            <div class="layout-grid">
+                <div class="panel">
+                    <h3>Interactive Toy ECC Engine</h3>
+                    <div class="control-group">
+                        <label for="bobPrivKey">Bob's Private Key ($d_B \in [1, 8]$):</label>
+                        <input type="number" id="bobPrivKey" value="4" min="1" max="8">
+                    </div>
+                    <div class="control-group">
+                        <label for="aliceNonce">Alice's Ephemeral Nonce ($k \in [1, 8]$):</label>
+                        <input type="number" id="aliceNonce" value="5" min="1" max="8">
+                    </div>
+                    <div class="control-group">
+                        <label for="eccPlaintext">Message to Encrypt:</label>
+                        <input type="text" id="eccPlaintext" value="ATTACK AT DAWN">
+                    </div>
+                    <button class="btn-primary" id="runEccBtn">Execute ECC Encryption & Decryption</button>
+
+                    <div style="margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1rem;">
+                        <p><strong>Bob's Public Key $Q_B$:</strong> <span class="badge" id="bobPubKeyDisplay">-</span></p>
+                        <p><strong>Alice's Ephemeral Public Point $C_1$:</strong> <span class="badge" id="alicePubKeyDisplay">-</span></p>
+                        <p><strong>Computed Shared Secret $S$:</strong> <span class="badge" id="sharedSecretDisplay">-</span></p>
+                        <p><strong>Ciphertext:</strong> <code id="eccCipherDisplay" style="color:#e74c3c; font-weight:bold;">-</code></p>
+                        <p><strong>Decrypted Output:</strong> <code id="eccDecryptedDisplay" style="color:#27ae60; font-weight:bold;">-</code></p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Cryptographic Step-by-Step Execution Trace</h3>
+                    <p style="font-size:0.85rem; color:#7f8c8d;">Live algebraic log of point doublings, slope calculations, and shared secret reconciliation:</p>
+                    <div class="output-box" id="eccTraceLog">Awaiting execution...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. THE CAESAR CIPHER -->
+        <section>
+            <h2>2. The Caesar Cipher</h2>
+            <p>
+                The Caesar cipher is an archetypal monoalphabetic substitution cipher. Operating on the residue ring $\mathbb{Z}_{26}$, each character $p_i \in \{0, \dots, 25\}$ of a plaintext message is mapped to a ciphertext character $c_i$ via a constant linear translation parameter $k \in \mathbb{Z}_{26}$:
+            </p>
+            <div style="text-align: center; margin: 1.5rem 0; font-family: 'Consolas', monospace; font-size: 1.1rem; background: #fff; padding: 1rem; border: 1px solid #e1e8ed; border-radius: 4px;">
+                Encryption: &nbsp; $c_i = (p_i + k) \pmod{26}$ &emsp;|&emsp; Decryption: &nbsp; $p_i = (c_i - k) \pmod{26}$
+            </div>
+
+            <div class="panel">
+                <h3>Caesar Cipher Simulator (Same Message)</h3>
+                <div class="layout-grid" style="align-items: flex-end;">
+                    <div class="control-group" style="margin-bottom:0;">
+                        <label for="caesarPlaintext">Plaintext Input:</label>
+                        <input type="text" id="caesarPlaintext" value="ATTACK AT DAWN">
+                    </div>
+                    <div class="control-group" style="margin-bottom:0;">
+                        <label for="caesarKey">Secret Shift Key ($k \in [0, 25]$):</label>
+                        <input type="number" id="caesarKey" value="7" min="0" max="25">
+                    </div>
+                    <div>
+                        <button class="btn-primary" id="runCaesarBtn">Run Caesar Cipher</button>
+                    </div>
+                </div>
+                <div style="margin-top: 1rem; display: flex; gap: 2rem; flex-wrap: wrap;">
+                    <p>Ciphertext Output: <code id="caesarCipherDisplay" style="color:#e74c3c; font-weight:bold; font-size:1.1rem;">-</code></p>
+                    <p>Decrypted Roundtrip: <code id="caesarDecryptedDisplay" style="color:#27ae60; font-weight:bold; font-size:1.1rem;">-</code></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. COMPARATIVE ANALYSIS -->
+        <section>
+            <h2>3. Rigorous Comparative Analysis: Toy ECC vs. Caesar Cipher</h2>
+            <p>
+                While both schemes allow two parties to securely communicate across an unshielded channel, their fundamental architectures, statistical profiles, and security assurances belong to entirely different cryptographic epochs.
+            </p>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Architectural Dimension</th>
+                        <th>Caesar Cipher ($\mathbb{Z}_{26}$)</th>
+                        <th>Toy Elliptic Curve Cryptosystem ($\mathbb{F}_{17}$)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Cryptographic Paradigm</strong></td>
+                        <td><strong>Symmetric:</strong> A single shared secret key $k$ must be securely exchanged prior to communication.</td>
+                        <td><strong>Asymmetric (Public-Key):</strong> Bob distributes $Q_B$ openly; Alice encrypts with zero prior secret agreement.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Key Space Size ($|\mathcal{K}|$)</strong></td>
+                        <td>$|\mathcal{K}| = 26$ (effectively 25 non-trivial shifts). Trivial to exhaust manually in seconds.</td>
+                        <td>$|\mathcal{K}| = 9$ (in this toy demo) vs. $|\mathcal{K}| \approx 2^{256} \approx 1.15 \times 10^{77}$ in production <code>secp256k1</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Encryption Nature</strong></td>
+                        <td><strong>Deterministic:</strong> Encrypting the plaintext character 'A' with key $k$ always yields the exact same ciphertext character.</td>
+                        <td><strong>Probabilistic (IND-CPA):</strong> Encrypting 'A' with different ephemeral nonces $k$ yields radically different points $C_1, S$.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Mathematical Primitive</strong></td>
+                        <td>Elementary modular arithmetic (Translation group in cyclic ring $\mathbb{Z}_{26}$).</td>
+                        <td>Nonlinear abelian group law over projective algebraic curves (Elliptic Curve Discrete Logarithm Problem).</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Statistical Invariance</strong></td>
+                        <td><strong>100% Preserved:</strong> Letter frequencies, bigrams, and trigrams are merely rotated. $I(M; C) > 0$.</td>
+                        <td><strong>Completely Destroyed:</strong> When ephemeral nonces vary, ciphertext symbols follow a uniform pseudo-random distribution.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="stat-callout">
+                <h4 style="margin-top:0; color:#27ae60;">Statistical Entropy & Frequency Invariance</h4>
+                <p>
+                    The fatal flaw of the Caesar cipher is its <em>lack of diffusion</em>: the probability distribution of characters in the ciphertext is identical to that of the plaintext, shifted rigidly by an offset $k$. If the letter <strong>E</strong> is the most frequent character in an English plaintext, the character representing $\mathbf{E} + k \pmod{26}$ will remain the single most frequent symbol in the ciphertext.
+                </p>
+                <p style="margin-bottom:0;">
+                    In contrast, asymmetric schemes use ephemeral random nonces ($k$). Encrypting the word <code>"BANANA"</code> with ECC ElGamal or ECIES causes each 'A' to map to a different, statistically independent point on the curve. This achieves <strong>Ciphertext Indistinguishability under Chosen-Plaintext Attack (IND-CPA)</strong>.
+                </p>
+            </div>
+        </section>
+
+        <!-- 4. STATISTICAL CRYPTANALYSIS OF CAESAR -->
+        <section>
+            <h2>4. Statistical Cryptanalysis of the Caesar Cipher</h2>
+            <p>
+                Because natural languages possess high redundancy and non-uniform symbol distributions, a ciphertext produced by a monoalphabetic substitution cipher can be cracked deterministically without knowing the key.
+            </p>
+
+            <h3>The Chi-Square ($\chi^2$) Goodness-of-Fit Criterion</h3>
+            <p>
+                Let $\mathbf{p} = [p_A, p_B, \dots, p_Z]$ represent the standardized expected frequency vector of the English language (e.g., $p_E \approx 0.127$, $p_T \approx 0.091$). For a ciphertext of length $N$, we test all 26 possible shift candidates $s \in \{0, \dots, 25\}$. For each candidate $s$, we decrypt the text, count the observed occurrences of each letter $O_c(s)$, and compute the expected count $E_c = N \cdot p_c$.
+            </p>
+            <p>
+                The Pearson's Chi-Square statistic measures the divergence between observed and expected frequencies:
+            </p>
+            <div style="text-align: center; margin: 1.5rem 0; font-family: 'Consolas', monospace; font-size: 1.15rem; background: #fff; padding: 1rem; border: 1px solid #e1e8ed; border-radius: 4px;">
+                $$\chi^2(s) = \sum_{c='A'}^{\text{'Z'}} \frac{\left(O_c(s) - E_c\right)^2}{E_c}$$
+            </div>
+            <p>
+                The candidate key $\hat{k}$ that minimizes $\chi^2(s)$ corresponds to the hypothesis whose letter distribution matches natural English with the highest probability.
+            </p>
+
+            <!-- INTERACTIVE STATISTICAL LAB -->
+            <div class="panel">
+                <h3>Live Statistical Cryptanalysis Engine</h3>
+                <p>Select a sample length or enter custom text to observe how statistical power scales with sample size $N$:</p>
+                
+                <div style="margin-bottom: 1rem;">
+                    <strong>Sample Presets:</strong>
+                    <button class="btn-secondary preset-btn" data-text="MEET ME AT NOON">Short (N = 12)</button>
+                    <button class="btn-secondary preset-btn" data-text="CRYPTOGRAPHY IS THE STUDY OF SECURE INFORMATION AND COMMUNICATIONS">Medium (N = 59)</button>
+                    <button class="btn-secondary preset-btn" data-text="THE STANDARD FREQUENCY DISTRIBUTION OF LETTERS IN THE ENGLISH LANGUAGE REPRESENTS A STOCHASTIC MARKOV MODEL. IN LONGER TEXTS THE LAW OF LARGE NUMBERS GUARANTEES CONVERGENCE OF EMPIRICAL FREQUENCIES TOWARDS THE POPULATION MEAN ENABLING UNAMBIGUOUS CRYPTANALYSIS.">Long (N = 250)</button>
+                </div>
+
+                <div class="control-group">
+                    <label for="cryptoTextInput">Plaintext Sample Corpus:</label>
+                    <textarea id="cryptoTextInput" rows="3">CRYPTOGRAPHY IS THE STUDY OF SECURE INFORMATION AND COMMUNICATIONS</textarea>
+                </div>
+
+                <div class="layout-grid" style="align-items: flex-end;">
+                    <div class="control-group" style="margin-bottom:0;">
+                        <label for="cryptoShiftSelect">Secret Caesar Shift Applied to Text ($k$):</label>
+                        <select id="cryptoShiftSelect">
+                            <option value="3">Shift +3 (Classic Caesar)</option>
+                            <option value="7" selected>Shift +7</option>
+                            <option value="13">Shift +13 (ROT13)</option>
+                            <option value="19">Shift +19</option>
+                            <option value="25">Shift +25</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn-primary" id="runAnalysisBtn">Run &Chi;&sup2; Cryptanalysis</button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; background:#f8f9fa; padding:1rem; border-radius:4px;">
+                    <p style="margin:0 0 5px 0;"><strong>Active Ciphertext ($N = $ <span id="actualCipherLength">0</span>):</strong></p>
+                    <code id="actualCipherDisplay" style="color:#e74c3c; word-break:break-all;">-</code>
+                    <div id="bestKeyBadge" style="margin-top:0.8rem; font-size:1.05rem;">-</div>
+                </div>
+
+                <!-- DISTRIBUTION CHART -->
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Empirical Sample Distribution vs. Theoretical English Population:</h4>
+                <canvas id="freqChartCanvas" width="800" height="240"></canvas>
+
+                <!-- TOP CANDIDATES TABLE -->
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Chi-Square Candidate Ranking:</h4>
+                <table class="comparison-table" id="analysisResultsTable">
+                    <!-- Populated via JS -->
+                </table>
+
+                <!-- MULTI-METHOD COMPARISON -->
+                <div style="margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
+                    <h4>Optional Directive: Comparison of Alternative Cryptanalytic Approaches</h4>
+                    <p>Compare the performance of Exhaustive Key Search, the Single-Letter Heuristic ('E' assumption), and Bigram Markov log-likelihood scoring on this exact sample:</p>
+                    <button class="btn-primary" id="runBenchmarkBtn">Evaluate All 3 Approaches Concurrently</button>
+                    <div id="benchmarkResultCard"></div>
+                </div>
+            </div>
+
+            <!-- DISCUSSION ON SAMPLE SIZE & LIMITATIONS -->
+            <h3>Empirical Behavior across Sample Lengths & Limitations</h3>
+            <div class="stat-callout">
+                <h4>1. The Law of Large Numbers (LLN) and Central Limit Theorem</h4>
+                <p>
+                    As the ciphertext length $N \to \infty$, the sample variance $\sigma^2 = p_c(1 - p_c)/N$ approaches zero. On texts with $N \ge 200$, the Chi-Square statistic achieves virtually <strong>100% accuracy</strong>, unambiguously identifying the true shift key.
+                </p>
+                <p style="margin-bottom:0;">
+                    Conversely, for short texts ($N < 20$), the sample distribution suffers from severe stochastic fluctuation (the "Law of Small Numbers"). In sentences like <code>"MEET ME AT NOON"</code>, letters like 'E' and 'O' are over-represented while letters like 'T' or 'A' may be absent. Here, unigram $\chi^2$ can fail, whereas <strong>Bigram Scoring</strong> succeeds by evaluating adjacent transitional pairs (e.g., <code>"TH"</code>, <code>"HE"</code>, <code>"IN"</code>).
+                </p>
+            </div>
+
+            <div class="alert-callout">
+                <h4>2. Pathological Cases & Vulnerabilities of Frequency Analysis</h4>
+                <p style="margin-bottom:0;">
+                    Frequency analysis completely collapses in three situations:
+                    (a) <strong>Lipograms</strong> (literary texts intentionally written without specific letters, such as Ernest Vincent Wright's 50,000-word novel <em>Gadsby</em> which contains zero instances of the letter 'E'); 
+                    (b) <strong>High-entropy inputs</strong> (encrypted files, compressed archives, or compiled binaries); 
+                    (c) <strong>Polyalphabetic ciphers</strong> (such as the Vigenère cipher or Enigma, which alternate between multiple shifting keys).
+                </p>
+            </div>
+        </section>
+
+        <!-- 5. ATTACKS ON TOY ECC -->
+        <section>
+            <h2>5. Cryptanalysis of the Toy ECC Scheme: Exploiting Restricted Key Spaces</h2>
+            <p>
+                In Part 1 of this curriculum, the <code>secp256k1</code> toy curve was constructed over $\mathbb{F}_{17}$ with $G = (1, 5)$. The resulting cyclic subgroup order is $n = 9$. Because this domain was purposely truncated to make manual calculation feasible, it introduces a fatal vulnerability to <strong>Discrete Logarithm Key Recovery</strong>.
+            </p>
+
+            <h3>Implementation of the Key Recovery Attack</h3>
+            <p>
+                An eavesdropper (Eve) who intercepts the Public Key $Q_B = d_B \cdot G$ and ciphertext $(C_1, C_2)$ does not need to inspect the ciphertext statistics. Eve can directly solve the <strong>Elliptic Curve Discrete Logarithm Problem (ECDLP)</strong> by computing successive scalar multiplications $1 \cdot G, 2 \cdot G, 3 \cdot G, \dots$ until reaching $Q_B$.
+            </p>
+
+            <div class="panel">
+                <h3>Live ECDLP Exhaustive Search Simulator</h3>
+                <p>Execute an automated key-recovery attack against Bob's active Public Key generated in Section 1:</p>
+                <button class="btn-danger" id="runEccAttackBtn">Launch Algebraic ECDLP Attack</button>
+                <div id="eccAttackSummary" style="margin-top: 1rem;"></div>
+                <div class="output-box" id="eccAttackLog">Attack engine idle. Press the button above to attack.</div>
+            </div>
+
+            <!-- CONTRAST: STATISTICAL VS ALGEBRAIC ATTACKS -->
+            <h3>Fundamental Contrasts: Caesar Statistical Attack vs. ECC Algebraic Attack</h3>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Property</th>
+                        <th>Caesar Cryptanalysis (Statistical)</th>
+                        <th>Toy ECC Attack (Algebraic / ECDLP)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Attack Surface</strong></td>
+                        <td><strong>Ciphertext-Only:</strong> Exploits statistical redundancy and non-uniform symbol frequencies of natural language.</td>
+                        <td><strong>Public-Key / Key-Space Bounded:</strong> Exploits the small mathematical group order $n$. Completely ignores ciphertext text.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data Dependency</strong></td>
+                        <td>Requires large volumes of text ($N > 100$). Completely fails if the plaintext is random bytes or compressed.</td>
+                        <td>Independent of plaintext semantics. Succeeds instantaneously even if the message is pure random white noise.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Computational Complexity</strong></td>
+                        <td>$O(26 \cdot N) \approx O(N)$ linear scans over the ciphertext string.</td>
+                        <td>$O(n)$ group operations for brute force, or $O(\sqrt{n})$ using Pollard's Rho or Baby-Step Giant-Step (BSGS).</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- WHY REAL SECP256K1 IS SECURE -->
+            <h3>Why the Same Attack is Computationally Infeasible Against Production ECC</h3>
+            <p>
+                In real-world blockchain protocols and financial systems, <code>secp256k1</code> is defined over a 256-bit prime field:
+            </p>
+            <div style="text-align: center; margin: 1.5rem 0; font-family: 'Consolas', monospace; font-size: 1.05rem; background: #fff; padding: 1rem; border: 1px solid #e1e8ed; border-radius: 4px;">
+                $p = 2^{256} - 2^{32} - 977$ &emsp;|&emsp; Group Order: $n \approx 1.15792089 \times 10^{77} \approx 2^{256}$
+            </div>
+            
+            <p>
+                Against production <code>secp256k1</code>, solving the ECDLP cannot be performed by simple enumeration:
+            </p>
+            <ul>
+                <li><strong>Exhaustive Search:</strong> Requires $O(n) \approx 2^{256}$ scalar point additions.</li>
+                <li><strong>Pollard's Rho Algorithm:</strong> The most efficient known classical algorithm for generic elliptic curves requires $O(\sqrt{n}) \approx \sqrt{2^{256}} = 2^{128}$ point additions.</li>
+            </ul>
+
+            <div class="stat-callout" style="border-left-color: #8e44ad;">
+                <h4 style="margin-top:0; color:#8e44ad;">Thermodynamic & Physical Constraints (Landauer's Principle)</h4>
+                <p>
+                    To understand the magnitude of $2^{128} \approx 3.4 \times 10^{38}$ operations, consider a hypothetical quantum-efficient supercomputer capable of performing $10^{18}$ point operations per second (one quintillion ops/sec). 
+                </p>
+                <p>
+                    The time required to compute $2^{128}$ operations would be:
+                </p>
+                $$\frac{3.402 \times 10^{38}}{10^{18} \text{ ops/sec}} \approx 3.402 \times 10^{20} \text{ seconds} \approx 1.07 \times 10^{13} \text{ years}$$
+                <p style="margin-bottom:0;">
+                    Given that the estimated age of the universe is approximately $1.38 \times 10^{10}$ years, attacking production <code>secp256k1</code> would require nearly <strong>1,000 times the entire age of the cosmos</strong>. Furthermore, by Landauer's Principle ($E \ge k_B T \ln 2$), dissipating the heat generated by $2^{128}$ bit operations would require more energy than is consumed by our entire planet in multiple millennia.
+                </p>
+            </div>
+
+            <!-- ARCHITECTURAL WEAKNESSES -->
+            <h3>Optional: Inherent Weaknesses in Toy Scheme Design vs. Production Standards</h3>
+            <p>Beyond the restricted key space, several architectural vulnerabilities exist in naive toy implementations:</p>
+            <ol>
+                <li>
+                    <strong>Malleability of Plain ElGamal:</strong> 
+                    In basic ElGamal schemes, the ciphertext point $C_2 = M + kQ_B$ is malleable. An active attacker can intercept the transmission and compute $C_2' = C_2 + \Delta$, causing the decrypted plaintext to alter predictably ($M' = M + \Delta$) without triggering an error. Production schemes resolve this via <strong>ECIES</strong> using HMAC or Authenticated Encryption with Associated Data (AEAD) like AES-GCM.
+                </li>
+                <li>
+                    <strong>Catastrophic Ephemeral Nonce Reuse ($k_1 = k_2$):</strong>
+                    If Alice reuses the exact same ephemeral scalar $k$ to encrypt two distinct messages $M_1$ and $M_2$, both ciphertexts share identical public points $C_{1,1} = C_{1,2} = kG$. An observer immediately discovers that $C_{2,1} - C_{2,2} = M_1 - M_2$, completely exposing the algebraic difference between the plaintexts without recovering Bob's private key.
+                </li>
+                <li>
+                    <strong>Small Subgroup Attacks:</strong>
+                    If a curve order $N$ has small prime factors, an adversary can query public keys restricted to small subgroups (Pohlig-Hellman algorithm). Real <code>secp256k1</code> specifically avoids this by having a prime order with cofactor $h = 1$.
+                </li>
+            </ol>
+        </section>
+    </main>
+
+    <footer>
+        <p>Applied Cryptography & Statistics &copy; 2026 — Dario Pietrosanto (2055042)</p>
+    </footer>
+
+    <!-- Cache-busting script link -->
+    <script src="script.js?v=5"></script>
+</body>
+</html>

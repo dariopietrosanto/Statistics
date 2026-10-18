@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HMWK 3: Toy ECC vs Caesar Cipher & Statistical Cryptanalysis</title>
+    <title>HMWK 3: Toy ECC vs Caesar Cipher & Advanced Statistical Cryptanalysis</title>
     <link rel="stylesheet" href="../style.css">
+    <!-- KaTeX for math typesetting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
     <style>
         .layout-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
         .panel { background: #ffffff; padding: 1.5rem; border-radius: 6px; border: 1px solid #e1e8ed; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
@@ -13,6 +17,8 @@
         .control-group input, .control-group select, .control-group textarea { width: 100%; padding: 0.6rem; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; font-size: 0.95rem; }
         .btn-primary { background: #3498db; color: white; border: none; padding: 0.7rem 1.4rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; font-size: 0.95rem; }
         .btn-primary:hover { background: #2980b9; }
+        .btn-success { background: #27ae60; color: white; border: none; padding: 0.7rem 1.4rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; font-size: 0.95rem; }
+        .btn-success:hover { background: #219653; }
         .btn-danger { background: #e74c3c; color: white; border: none; padding: 0.7rem 1.4rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; font-size: 0.95rem; }
         .btn-danger:hover { background: #c0392b; }
         .btn-secondary { background: #7f8c8d; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-right: 0.5rem; margin-bottom: 0.5rem; }
@@ -31,7 +37,7 @@
 <body>
     <header>
         <h1>Homework 3: Applied Cryptography & Statistical Cryptanalysis</h1>
-        <p>Toy ECC Cryptosystem vs Caesar Cipher — Frequency Analysis, &Chi;&sup2; Goodness-of-Fit & Discrete Logarithm Attacks</p>
+        <p>Toy ECC Cryptosystem vs Caesar Cipher — Frequency Analysis, &Chi;&sup2; Goodness-of-Fit, Monte Carlo Simulations & Shanks' BSGS</p>
         <p style="margin-top: 0.5rem; font-size: 1rem; color: #ecf0f1;"><strong>Student:</strong> Dario Pietrosanto (2055042) &nbsp;|&nbsp; Master's Degree Course in Applied Statistics & Cybersecurity</p>
     </header>
 
@@ -42,18 +48,24 @@
         <section class="panel" style="background:#fcfcfc; border-left: 4px solid #3498db; margin-bottom: 2rem;">
             <h2 style="margin-top:0; border:none; padding:0;">Executive Summary & Research Directives</h2>
             <p>
-                This project implements and formally evaluates two contrasting cryptographic paradigms: an <strong>Asymmetric Toy Cryptosystem</strong> built upon the <code>secp256k1</code> elliptic curve defined over a small prime field $\mathbb{F}_{17}$, and a classical <strong>Symmetric Caesar Cipher</strong> in $\mathbb{Z}_{26}$. 
+                This project implements and formally evaluates two contrasting cryptographic paradigms: an <strong>Asymmetric Toy Cryptosystem</strong> built upon the <code>secp256k1</code> elliptic curve defined over a small prime field $\mathbb{F}_{17}$, and a classical <strong>Symmetric Caesar Cipher</strong> in the cyclic residue ring $\mathbb{Z}_{26}$.
             </p>
             <p>
-                Beyond providing working browser implementations of both ciphers, this paper investigates their mathematical mechanisms, key spaces, and statistical distributions. We demonstrate how <strong>Statistical Cryptanalysis</strong> (via Pearson's Chi-Square $\chi^2$ Goodness-of-Fit and N-gram Markov scoring) can recover Caesar keys from natural language redundancy, and contrast it with an <strong>Algebraic Key Recovery Attack</strong> that exploits the restricted scalar space of the toy elliptic curve.
+                Beyond providing operational browser prototypes for both schemes, this research connects software implementation with <strong>applied statistics, probability theory, and algorithmic complexity</strong>. We present:
             </p>
+            <ul>
+                <li><strong>Dual Toy ECC Schemes:</strong> Both textbook Point-ElGamal and hybrid ECIES-style stream masking over $\mathbb{F}_{17}$.</li>
+                <li><strong>Statistical Cryptanalysis:</strong> Pearson's Chi-Square ($\chi^2$) Goodness-of-Fit test, Single-Letter heuristics, and N-gram Markov transitional scoring.</li>
+                <li><strong>Empirical Monte Carlo Experiments:</strong> Automated batch testing demonstrating how sample size $N$ dictates the convergence of success probabilities $P(\text{Success})$ via the Law of Large Numbers.</li>
+                <li><strong>Algebraic Attacks on Restricted Key Spaces:</strong> Discrete logarithm recovery comparing brute-force $O(n)$ with Shanks' Baby-Step Giant-Step $O(\sqrt{n})$ time-memory tradeoff, paired with a thermodynamic Landauer calculator.</li>
+            </ul>
         </section>
 
         <!-- 1. TOY ECC SCHEME -->
         <section>
             <h2>1. The Toy Elliptic Curve Cryptosystem</h2>
             <p>
-                Following the mathematical framework formulated in Homework 1, we utilize the <code>secp256k1</code> Weierstraß equation $y^2 \equiv x^3 + 7 \pmod{17}$ with $a=0, b=7$ over the Galois field $\mathbb{F}_{17}$. The standard base generator is $G = (1, 5)$, which spans a cyclic subgroup of order $n=9$.
+                Following the Weierstraß formulation developed in Homework 1, the curve equation is $y^2 \equiv x^3 + 7 \pmod{17}$ with coefficients $a = 0, b = 7$ over the Galois field $\mathbb{F}_{17}$. Using the standard base generator $G = (1, 5)$, the curve produces a cyclic abelian subgroup of order $n = 9$.
             </p>
 
             <h3>Algorithmic Stages and the Role of Keys</h3>
@@ -71,11 +83,11 @@
                 <li>
                     <strong>Shared Secret Derivation & Encryption:</strong>
                     Alice calculates the shared secret point $S = k \cdot Q_B = k \cdot (d_B \cdot G)$. 
-                    Using the coordinates of $S$, Alice derives an algebraic stream mask $K = ((x_S \cdot 7 + y_S \cdot 11) \bmod 25) + 1$, and produces the ciphertext string $C_2$. The complete transmitted message is the tuple $(C_1, C_2)$.
+                    In <strong>Mode A (Hybrid Masking)</strong>, Alice derives an algebraic stream mask $K = ((x_S \cdot 7 + y_S \cdot 11) \bmod 25) + 1$, producing ciphertext string $C_2$. In <strong>Mode B (Point-ElGamal)</strong>, message symbols are encoded directly as points $M$ on the curve, producing $C_2 = M + k \cdot Q_B$.
                 </li>
                 <li>
                     <strong>Decapsulation & Decryption (Bob):</strong>
-                    Upon receiving $(C_1, C_2)$, Bob evaluates $S = d_B \cdot C_1 = d_B \cdot (k \cdot G) = k \cdot (d_B \cdot G)$. Because scalar multiplication is commutative over abelian groups, Bob obtains the identical shared point $S$ without ever learning Alice's nonce $k$. Bob computes the inverse mask and recovers the exact plaintext.
+                    Upon receiving $(C_1, C_2)$, Bob evaluates $S = d_B \cdot C_1 = d_B \cdot (k \cdot G) = k \cdot (d_B \cdot G)$. Because scalar multiplication is commutative over abelian groups, Bob obtains the identical shared point $S$ without learning Alice's nonce $k$. Bob inverts the operation and recovers the exact plaintext.
                 </li>
             </ul>
 
@@ -104,6 +116,8 @@
                         <p><strong>Ciphertext:</strong> <code id="eccCipherDisplay" style="color:#e74c3c; font-weight:bold;">-</code></p>
                         <p><strong>Decrypted Output:</strong> <code id="eccDecryptedDisplay" style="color:#27ae60; font-weight:bold;">-</code></p>
                     </div>
+
+                    <div id="pointElGamalBox" style="margin-top: 1rem;"></div>
                 </div>
 
                 <div class="panel">
@@ -150,7 +164,7 @@
         <section>
             <h2>3. Rigorous Comparative Analysis: Toy ECC vs. Caesar Cipher</h2>
             <p>
-                While both schemes allow two parties to securely communicate across an unshielded channel, their fundamental architectures, statistical profiles, and security assurances belong to entirely different cryptographic epochs.
+                While both schemes allow two parties to communicate across an insecure channel, their mathematical architectures, statistical properties, and security assurances belong to entirely different cryptographic paradigms.
             </p>
 
             <table class="comparison-table">
@@ -196,7 +210,7 @@
                     The fatal flaw of the Caesar cipher is its <em>lack of diffusion</em>: the probability distribution of characters in the ciphertext is identical to that of the plaintext, shifted rigidly by an offset $k$. If the letter <strong>E</strong> is the most frequent character in an English plaintext, the character representing $\mathbf{E} + k \pmod{26}$ will remain the single most frequent symbol in the ciphertext.
                 </p>
                 <p style="margin-bottom:0;">
-                    In contrast, asymmetric schemes use ephemeral random nonces ($k$). Encrypting the word <code>"BANANA"</code> with ECC ElGamal or ECIES causes each 'A' to map to a different, statistically independent point on the curve. This achieves <strong>Ciphertext Indistinguishability under Chosen-Plaintext Attack (IND-CPA)</strong>.
+                    In contrast, asymmetric schemes use ephemeral random nonces ($k$). Encrypting the word <code>"BANANA"</code> with ECC ElGamal causes each 'A' to map to a different, statistically independent point on the curve. This achieves <strong>Ciphertext Indistinguishability under Chosen-Plaintext Attack (IND-CPA)</strong>.
                 </p>
             </div>
         </section>
@@ -273,33 +287,40 @@
 
                 <!-- MULTI-METHOD COMPARISON -->
                 <div style="margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
-                    <h4>Optional Directive: Comparison of Alternative Cryptanalytic Approaches</h4>
-                    <p>Compare the performance of Exhaustive Key Search, the Single-Letter Heuristic ('E' assumption), and Bigram Markov log-likelihood scoring on this exact sample:</p>
-                    <button class="btn-primary" id="runBenchmarkBtn">Evaluate All 3 Approaches Concurrently</button>
+                    <h4>Comparison of Alternative Approaches on Active Text</h4>
+                    <p>Evaluate Exhaustive Key Search, the Single-Letter Heuristic ('E' assumption), and Bigram Markov log-likelihood scoring concurrently:</p>
+                    <button class="btn-primary" id="runBenchmarkBtn">Evaluate All 3 Approaches</button>
                     <div id="benchmarkResultCard"></div>
                 </div>
             </div>
 
-            <!-- DISCUSSION ON SAMPLE SIZE & LIMITATIONS -->
-            <h3>Empirical Behavior across Sample Lengths & Limitations</h3>
-            <div class="stat-callout">
-                <h4>1. The Law of Large Numbers (LLN) and Central Limit Theorem</h4>
+            <!-- MONTE CARLO EXPERIMENT (GURU LEVEL) -->
+            <div class="panel" style="margin-top: 2rem; border-top: 4px solid #27ae60;">
+                <h3>Empirical Monte Carlo Experiment: Success Probability vs. Sample Length $N$</h3>
                 <p>
-                    As the ciphertext length $N \to \infty$, the sample variance $\sigma^2 = p_c(1 - p_c)/N$ approaches zero. On texts with $N \ge 200$, the Chi-Square statistic achieves virtually <strong>100% accuracy</strong>, unambiguously identifying the true shift key.
+                    To rigorously assess the effectiveness and limitations of letter-frequency cryptanalysis, we execute an automated Monte Carlo experiment. 
+                    The engine samples 100 random text fragments across lengths $N \in \{10, 20, 40, 80, 150, 300\}$, encrypts them with a uniform random key $k \in [1, 25]$, and computes the empirical recovery probability $P(\text{Success})$ for all three algorithms:
                 </p>
-                <p style="margin-bottom:0;">
-                    Conversely, for short texts ($N < 20$), the sample distribution suffers from severe stochastic fluctuation (the "Law of Small Numbers"). In sentences like <code>"MEET ME AT NOON"</code>, letters like 'E' and 'O' are over-represented while letters like 'T' or 'A' may be absent. Here, unigram $\chi^2$ can fail, whereas <strong>Bigram Scoring</strong> succeeds by evaluating adjacent transitional pairs (e.g., <code>"TH"</code>, <code>"HE"</code>, <code>"IN"</code>).
-                </p>
-            </div>
 
-            <div class="alert-callout">
-                <h4>2. Pathological Cases & Vulnerabilities of Frequency Analysis</h4>
-                <p style="margin-bottom:0;">
-                    Frequency analysis completely collapses in three situations:
-                    (a) <strong>Lipograms</strong> (literary texts intentionally written without specific letters, such as Ernest Vincent Wright's 50,000-word novel <em>Gadsby</em> which contains zero instances of the letter 'E'); 
-                    (b) <strong>High-entropy inputs</strong> (encrypted files, compressed archives, or compiled binaries); 
-                    (c) <strong>Polyalphabetic ciphers</strong> (such as the Vigenère cipher or Enigma, which alternate between multiple shifting keys).
-                </p>
+                <button class="btn-success" id="runMonteCarloBtn">Re-run Monte Carlo Simulation (600 Trials)</button>
+                <div id="mcStatus" style="margin-top: 0.8rem; font-size: 0.95rem;"></div>
+
+                <canvas id="mcChartCanvas" width="800" height="260" style="margin-top: 1rem;"></canvas>
+
+                <div class="stat-callout">
+                    <h4>Statistical Insights from Empirical Convergence:</h4>
+                    <ul>
+                        <li>
+                            <strong>Bigrams Dominate on Short Samples ($N \le 20$):</strong> Pairwise letter transitions (e.g., <code>"TH"</code>, <code>"IN"</code>) encapsulate Markov dependency information, providing high discriminant power when individual letter frequencies have not yet converged.
+                        </li>
+                        <li>
+                            <strong>Chi-Square Achieves Asymptotic Certainty ($N \ge 40$):</strong> By integrating information across all 26 degrees of freedom, $\chi^2$ rapidly converges to $100\%$ accuracy, governed by the Law of Large Numbers.
+                        </li>
+                        <li>
+                            <strong>The 'E' Heuristic Remains Unreliable:</strong> Relying on a single unigram is statistically fragile; even at $N=150$, other vowels or consonants frequently overtake 'E' in specific sentences, capping its success probability around $60\%-85\%$.
+                        </li>
+                    </ul>
+                </div>
             </div>
         </section>
 
@@ -307,17 +328,30 @@
         <section>
             <h2>5. Cryptanalysis of the Toy ECC Scheme: Exploiting Restricted Key Spaces</h2>
             <p>
-                In Part 1 of this curriculum, the <code>secp256k1</code> toy curve was constructed over $\mathbb{F}_{17}$ with $G = (1, 5)$. The resulting cyclic subgroup order is $n = 9$. Because this domain was purposely truncated to make manual calculation feasible, it introduces a fatal vulnerability to <strong>Discrete Logarithm Key Recovery</strong>.
+                In Part 1 of this curriculum, the <code>secp256k1</code> toy curve was constructed over $\mathbb{F}_{17}$ with generator $G = (1, 5)$ and cyclic subgroup order $n = 9$. Because this domain was purposely truncated to make manual calculation feasible, it introduces a fatal vulnerability to <strong>Discrete Logarithm Key Recovery</strong>.
             </p>
 
-            <h3>Implementation of the Key Recovery Attack</h3>
+            <h3>Implementation of the Key Recovery Attack: Brute-Force vs. Shanks' BSGS</h3>
             <p>
-                An eavesdropper (Eve) who intercepts the Public Key $Q_B = d_B \cdot G$ and ciphertext $(C_1, C_2)$ does not need to inspect the ciphertext statistics. Eve can directly solve the <strong>Elliptic Curve Discrete Logarithm Problem (ECDLP)</strong> by computing successive scalar multiplications $1 \cdot G, 2 \cdot G, 3 \cdot G, \dots$ until reaching $Q_B$.
+                An eavesdropper (Eve) who intercepts the Public Key $Q_B = d_B \cdot G$ and ciphertext $(C_1, C_2)$ does not need to inspect the ciphertext statistics. Eve can directly solve the <strong>Elliptic Curve Discrete Logarithm Problem (ECDLP)</strong>:
             </p>
+            <ul>
+                <li><strong>Exhaustive Linear Scan ($O(n)$):</strong> Evaluates $1 \cdot G, 2 \cdot G, \dots$ until matching $Q_B$.</li>
+                <li>
+                    <strong>Shanks' Baby-Step Giant-Step (BSGS, $O(\sqrt{n})$):</strong> 
+                    Sets $m = \lceil\sqrt{n}\rceil$. Precomputes baby steps $j \cdot G$ for $j \in [0, m-1]$ in a hash table, then computes giant steps $Q_B - i(m \cdot G)$ for $i \in [0, m]$ until detecting a hash collision, reducing complexity from $O(n)$ to $O(\sqrt{n})$.
+                </li>
+            </ul>
 
             <div class="panel">
-                <h3>Live ECDLP Exhaustive Search Simulator</h3>
-                <p>Execute an automated key-recovery attack against Bob's active Public Key generated in Section 1:</p>
+                <h3>Live Algebraic ECDLP Attack Simulator</h3>
+                <div class="control-group" style="max-width: 400px;">
+                    <label for="attackAlgorithmSelect">Select Attack Algorithm:</label>
+                    <select id="attackAlgorithmSelect">
+                        <option value="brute">Exhaustive Linear Scan (Brute-Force O(n))</option>
+                        <option value="bsgs" selected>Shanks' Baby-Step Giant-Step (BSGS O(√n))</option>
+                    </select>
+                </div>
                 <button class="btn-danger" id="runEccAttackBtn">Launch Algebraic ECDLP Attack</button>
                 <div id="eccAttackSummary" style="margin-top: 1rem;"></div>
                 <div class="output-box" id="eccAttackLog">Attack engine idle. Press the button above to attack.</div>
@@ -347,7 +381,7 @@
                     <tr>
                         <td><strong>Computational Complexity</strong></td>
                         <td>$O(26 \cdot N) \approx O(N)$ linear scans over the ciphertext string.</td>
-                        <td>$O(n)$ group operations for brute force, or $O(\sqrt{n})$ using Pollard's Rho or Baby-Step Giant-Step (BSGS).</td>
+                        <td>$O(n)$ group operations for brute force, or $O(\sqrt{n})$ using Pollard's Rho or Shanks' BSGS.</td>
                     </tr>
                 </tbody>
             </table>
@@ -355,32 +389,30 @@
             <!-- WHY REAL SECP256K1 IS SECURE -->
             <h3>Why the Same Attack is Computationally Infeasible Against Production ECC</h3>
             <p>
-                In real-world blockchain protocols and financial systems, <code>secp256k1</code> is defined over a 256-bit prime field:
+                In production blockchain protocols and financial systems, <code>secp256k1</code> is defined over a 256-bit prime field:
             </p>
             <div style="text-align: center; margin: 1.5rem 0; font-family: 'Consolas', monospace; font-size: 1.05rem; background: #fff; padding: 1rem; border: 1px solid #e1e8ed; border-radius: 4px;">
                 $p = 2^{256} - 2^{32} - 977$ &emsp;|&emsp; Group Order: $n \approx 1.15792089 \times 10^{77} \approx 2^{256}$
             </div>
-            
-            <p>
-                Against production <code>secp256k1</code>, solving the ECDLP cannot be performed by simple enumeration:
-            </p>
-            <ul>
-                <li><strong>Exhaustive Search:</strong> Requires $O(n) \approx 2^{256}$ scalar point additions.</li>
-                <li><strong>Pollard's Rho Algorithm:</strong> The most efficient known classical algorithm for generic elliptic curves requires $O(\sqrt{n}) \approx \sqrt{2^{256}} = 2^{128}$ point additions.</li>
-            </ul>
 
-            <div class="stat-callout" style="border-left-color: #8e44ad;">
-                <h4 style="margin-top:0; color:#8e44ad;">Thermodynamic & Physical Constraints (Landauer's Principle)</h4>
-                <p>
-                    To understand the magnitude of $2^{128} \approx 3.4 \times 10^{38}$ operations, consider a hypothetical quantum-efficient supercomputer capable of performing $10^{18}$ point operations per second (one quintillion ops/sec). 
-                </p>
-                <p>
-                    The time required to compute $2^{128}$ operations would be:
-                </p>
-                $$\frac{3.402 \times 10^{38}}{10^{18} \text{ ops/sec}} \approx 3.402 \times 10^{20} \text{ seconds} \approx 1.07 \times 10^{13} \text{ years}$$
-                <p style="margin-bottom:0;">
-                    Given that the estimated age of the universe is approximately $1.38 \times 10^{10}$ years, attacking production <code>secp256k1</code> would require nearly <strong>1,000 times the entire age of the cosmos</strong>. Furthermore, by Landauer's Principle ($E \ge k_B T \ln 2$), dissipating the heat generated by $2^{128}$ bit operations would require more energy than is consumed by our entire planet in multiple millennia.
-                </p>
+            <!-- THERMODYNAMIC CALCULATOR WIDGET -->
+            <div class="panel" style="margin-top: 1.5rem; border-top: 4px solid #8e44ad;">
+                <h3>Interactive Cryptographic Infeasibility & Landauer Thermodynamic Calculator</h3>
+                <p>Select a key length to compute the mathematical complexity, supercomputer execution time, and physical energy dissipation required to break the discrete logarithm:</p>
+                
+                <div class="control-group" style="max-width: 350px;">
+                    <label for="keySizeSelect">Select Cryptographic Key Length:</label>
+                    <select id="keySizeSelect">
+                        <option value="5">5-bit (Toy Curve: n = 9)</option>
+                        <option value="16">16-bit (Micro Embedded Curve)</option>
+                        <option value="32">32-bit (Historical Export Grade)</option>
+                        <option value="64">64-bit (Legacy Symmetric / DES-scale)</option>
+                        <option value="128">128-bit (Standard Symmetric Baseline)</option>
+                        <option value="256" selected>256-bit (Production secp256k1 / Bitcoin / Ethereum)</option>
+                    </select>
+                </div>
+
+                <div id="calcOutput"></div>
             </div>
 
             <!-- ARCHITECTURAL WEAKNESSES -->
@@ -408,6 +440,6 @@
     </footer>
 
     <!-- Cache-busting script link -->
-    <script src="script.js?v=5"></script>
+    <script src="script.js?v=6"></script>
 </body>
 </html>

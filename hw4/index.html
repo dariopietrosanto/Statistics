@@ -19,6 +19,8 @@
         .radio-label { display: flex; align-items: center; gap: 0.4rem; font-weight: normal; cursor: pointer; }
         .btn-primary { background: #3498db; color: white; border: none; padding: 0.7rem 1.4rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; font-size: 0.95rem; }
         .btn-primary:hover { background: #2980b9; }
+        .btn-success { background: #27ae60; color: white; border: none; padding: 0.7rem 1.4rem; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s; font-size: 0.95rem; }
+        .btn-success:hover { background: #219653; }
         .btn-secondary { background: #7f8c8d; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-right: 0.5rem; margin-bottom: 0.5rem; }
         .btn-secondary:hover { background: #636e72; }
         .comparison-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.95rem; }
@@ -36,7 +38,7 @@
 <body>
     <header>
         <h1>Homework 4: Stochastic Penetration Modeling & Asymptotic Convergence</h1>
-        <p>Ensemble Random Walks, Law of Large Numbers (LLN), Variance Scaling & Central Limit Theorem (CLT)</p>
+        <p>Ensemble Random Walks, Law of Large Numbers (LLN), Variance Scaling, Central Limit Theorem (CLT) & Berry-Esseen Rates</p>
         <p style="margin-top: 0.5rem; font-size: 1rem; color: #ecf0f1;"><strong>Student:</strong> Dario Pietrosanto (2055042) &nbsp;|&nbsp; Master's Degree Course in Applied Statistics & Cybersecurity</p>
     </header>
 
@@ -58,7 +60,7 @@
                 <li><strong>Rademacher Model:</strong> $X_i \in \{-1, +1\}$ with $P(X_i = +1) = P(X_i = -1) = 1/2$, formalizing a balanced, zero-mean tug-of-war where attacker advancement ($+1$) is countered by defensive remediation or honeypot mitigation ($-1$).</li>
             </ul>
             <p>
-                By simulating large trajectory ensembles across variable system depths $n$, this study investigates the asymptotic distribution and variance scaling of the <strong>Total Score $S_n$</strong>, the <strong>Average Score $S_n/n$</strong> (Law of Large Numbers), and the <strong>Normalized Score $S_n/\sqrt{n}$</strong> (Central Limit Theorem).
+                By simulating large trajectory ensembles across variable system depths $n$, this study investigates the asymptotic distribution and variance scaling of the <strong>Total Score $S_n$</strong>, the <strong>Average Score $S_n/n$</strong> (Law of Large Numbers), and the <strong>Normalized Score $S_n/\sqrt{n}$</strong> (Central Limit Theorem), complemented by formal <strong>Kolmogorov-Smirnov</strong> goodness-of-fit testing and the <strong>Berry-Esseen Theorem</strong>.
             </p>
         </section>
 
@@ -92,6 +94,11 @@
                         <td><strong>Variance ($\sigma^2$)</strong></td>
                         <td>$\text{Var}(X_i) = \mathbb{E}[X_i^2] - \mu^2 = p - p^2 = \mathbf{p(1-p)}$</td>
                         <td>$\text{Var}(X_i) = (\pm 1)^2 - 0^2 = \mathbf{1}$</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Third Central Moment ($\rho = \mathbb{E}[|X - \mu|^3]$)</strong></td>
+                        <td>$\rho = p(1-p)^3 + (1-p)p^3 = p(1-p)[(1-p)^2 + p^2]$</td>
+                        <td>$\rho = |+1|^3 \cdot \frac{1}{2} + |-1|^3 \cdot \frac{1}{2} = \mathbf{1}$</td>
                     </tr>
                     <tr>
                         <td><strong>Cybersecurity Context</strong></td>
@@ -153,22 +160,33 @@
                     </p>
                 </div>
             </div>
+
+            <div class="stat-callout">
+                <h4 style="margin-top:0; color:#27ae60;">Why Rademacher was Introduced: The Role of Zero-Mean Centering</h4>
+                <p>
+                    Notice the crucial difference between the two models: for Bernoulli, $S_n/\sqrt{n}$ has expectation $\sqrt{n}p \to \infty$. The uncentered distribution drifts rapidly to the right. 
+                    The <strong>Rademacher model was specifically introduced because its mean is naturally zero ($\mu = 0$)</strong>. Thus, $S_n/\sqrt{n}$ is <em>already centered and standardized</em> without artificial shifting!
+                </p>
+                <p style="margin-bottom:0;">
+                    For Bernoulli, to observe the Central Limit Theorem bell curve centered at zero, one must apply the centered standardization $Z_n = \frac{S_n - np}{\sqrt{np(1-p)}} \xrightarrow{d} \mathcal{N}(0, 1)$, which our interactive suite supports via the checkbox below.
+                </p>
+            </div>
         </section>
 
         <!-- 3. INTERACTIVE SIMULATION SUITE -->
         <section>
-            <h2>3. Interactive Simulation Suite</h2>
+            <h2>3. Interactive Simulation Suite & Real-Time Laboratory</h2>
             <p>
-                Configure the simulation parameters to observe trajectory ensembles, the terminal probability density function, and the variance scaling dynamics across $m$ concurrent attackers and $n$ systems:
+                Configure the simulation parameters to observe trajectory ensembles, the terminal probability density function, and the empirical variance tracking across $m$ concurrent attackers and $n$ systems:
             </p>
 
             <div class="panel">
                 <div style="margin-bottom: 1rem;">
                     <strong>Preset Experimental Regimes:</strong>
-                    <button class="btn-secondary preset-btn" data-model="rademacher" data-n="500" data-m="3000" data-norm="normalized" data-p="0.5">Rademacher CLT Limit (n=500, m=3000, Sₙ/√n)</button>
-                    <button class="btn-secondary preset-btn" data-model="bernoulli" data-n="1000" data-m="150" data-norm="average" data-p="0.7">Bernoulli LLN Funnel (n=1000, m=150, Sₙ/n, p=0.7)</button>
-                    <button class="btn-secondary preset-btn" data-model="rademacher" data-n="600" data-m="150" data-norm="total" data-p="0.5">Diffusive Walk Expansion (n=600, Sₙ)</button>
-                    <button class="btn-secondary preset-btn" data-model="bernoulli" data-n="30" data-m="2000" data-norm="normalized" data-p="0.3">Small-Scale Network (n=30)</button>
+                    <button class="btn-secondary preset-btn" data-model="rademacher" data-n="500" data-m="3000" data-norm="normalized" data-p="0.5" data-std="false">Rademacher CLT Limit (n=500, m=3000, Sₙ/√n)</button>
+                    <button class="btn-secondary preset-btn" data-model="bernoulli" data-n="1000" data-m="150" data-norm="average" data-p="0.7" data-std="false">Bernoulli LLN Funnel (n=1000, m=150, Sₙ/n, p=0.7)</button>
+                    <button class="btn-secondary preset-btn" data-model="bernoulli" data-n="500" data-m="2500" data-norm="normalized" data-p="0.3" data-std="true">Bernoulli Centered CLT (Zₙ, p=0.3)</button>
+                    <button class="btn-secondary preset-btn" data-model="rademacher" data-n="600" data-m="150" data-norm="total" data-p="0.5" data-std="false">Diffusive Walk Expansion (n=600, Sₙ)</button>
                 </div>
 
                 <div class="layout-grid" style="align-items: flex-end;">
@@ -196,33 +214,41 @@
                     </div>
                 </div>
 
-                <div style="margin-top: 1.2rem; border-top: 1px solid #eee; padding-top: 1rem;">
-                    <label style="font-weight:bold; color:#2c3e50;">Active Normalization Metric:</label>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="normalization" value="total"> 
-                            <strong>Total Score ($S_n$)</strong> &mdash; Variance $O(n)$
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="normalization" value="average"> 
-                            <strong>Average Score ($S_n/n$)</strong> &mdash; Variance $O(1/n)$ [LLN]
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="normalization" value="normalized" checked> 
-                            <strong>Normalized Score ($S_n/\sqrt{n}$)</strong> &mdash; Variance $O(1)$ [CLT]
-                        </label>
+                <div style="margin-top: 1.2rem; border-top: 1px solid #eee; padding-top: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <label style="font-weight:bold; color:#2c3e50;">Active Normalization Metric:</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="normalization" value="total"> 
+                                <strong>Total Score ($S_n$)</strong> &mdash; Variance $O(n)$
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="normalization" value="average"> 
+                                <strong>Average Score ($S_n/n$)</strong> &mdash; Variance $O(1/n)$ [LLN]
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="normalization" value="normalized" checked> 
+                                <strong>Normalized Score ($S_n/\sqrt{n}$)</strong> &mdash; Variance $O(1)$ [CLT]
+                            </label>
+                        </div>
                     </div>
+
+                    <label class="radio-label" style="background:#e8f4f8; padding:0.5rem 0.8rem; border-radius:4px; font-weight:bold; color:#2980b9;">
+                        <input type="checkbox" id="standardizeCheckbox">
+                        Apply Centered Standardization $Z_n = \frac{S_n - n\mu}{\sigma\sqrt{n}}$
+                    </label>
                 </div>
 
-                <div style="margin-top: 1rem;">
+                <div style="margin-top: 1.2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
                     <button class="btn-primary" id="runSimBtn">Re-run Simulation Ensemble</button>
+                    <button class="btn-success" id="playAnimBtn">▶ Play Step-by-Step Animation</button>
                 </div>
             </div>
 
             <!-- STATUS BANNER -->
             <div id="cltStatusBanner" style="margin-top: 1.5rem;"></div>
 
-            <!-- MOMENTS METRICS TABLE -->
+            <!-- MOMENTS & GOODNESS-OF-FIT METRICS TABLE -->
             <div class="metrics-grid">
                 <div class="metric-card">
                     <span style="font-size:0.85rem; color:#7f8c8d;">Theoretical Mean ($\mu_{norm}$)</span>
@@ -248,6 +274,14 @@
                     <span style="font-size:0.85rem; color:#7f8c8d;">Excess Kurtosis ($\gamma_2$)</span>
                     <div class="metric-val" id="statKurtosis">-</div>
                 </div>
+                <div class="metric-card" style="border-left: 4px solid #27ae60;">
+                    <span style="font-size:0.85rem; color:#7f8c8d;">Kolmogorov-Smirnov $D$</span>
+                    <div class="metric-val" id="statKsDistance" style="color:#27ae60;">-</div>
+                </div>
+                <div class="metric-card" style="border-left: 4px solid #3498db;">
+                    <span style="font-size:0.85rem; color:#7f8c8d;">Berry-Esseen Bound</span>
+                    <div class="metric-val" id="statBerryEsseen" style="color:#3498db;">-</div>
+                </div>
                 <div class="metric-card" style="border-left: 4px solid #e74c3c;">
                     <span style="font-size:0.85rem; color:#7f8c8d;">Max Attacker Breach</span>
                     <div class="metric-val" id="statMaxBreach" style="color:#e74c3c;">-</div>
@@ -262,7 +296,7 @@
             <div class="panel" style="margin-top: 1.5rem;">
                 <h3 style="margin-top:0;">1. Sample Attacker Trajectories Across System Depth $k = 1 \dots n$</h3>
                 <p style="font-size:0.9rem; color:#555;">
-                    Displays individual random walk realizations. The dashed line depicts theoretical mean trajectory $\mathbb{E}[S_k]$, while the shaded area illustrates the theoretical $\pm 2\sigma_k$ confidence envelope.
+                    Displays individual random walk realizations. The dashed line depicts the theoretical mean trajectory $\mathbb{E}[S_k]$, while the shaded area illustrates the theoretical $\pm 2\sigma_k$ confidence envelope. Press <strong>"Play Step-by-Step Animation"</strong> to watch the random walks evolve dynamically.
                 </p>
                 <canvas id="trajCanvas" width="820" height="280"></canvas>
             </div>
@@ -278,17 +312,17 @@
 
             <!-- VISUALIZATION 3: VARIANCE EVOLUTION -->
             <div class="panel" style="margin-top: 1.5rem;">
-                <h3 style="margin-top:0;">3. Variance Evolution Comparison Across System Scale</h3>
+                <h3 style="margin-top:0;">3. Variance Evolution Comparison: Empirical Points vs. Theoretical Curves</h3>
                 <p style="font-size:0.9rem; color:#555;">
-                    Visualizes how variance behaves across $k = 1 \dots n$ under the three normalizations: $\text{Var}(S_k)$ grows linearly, $\text{Var}(S_k/k)$ collapses hyperbolically to zero (LLN), and $\text{Var}(S_k/\sqrt{k})$ stays strictly invariant (CLT).
+                    The points represent the <strong>actual empirical sample variance</strong> calculated from the $m$ trajectories at each step $k$, proving exact convergence onto the theoretical scaling curves: $\text{Var}(S_k) = k\sigma^2$ (red line), $\text{Var}(S_k/k) = \sigma^2/k$ (blue curve), and $\text{Var}(S_k/\sqrt{k}) = \sigma^2$ (green flat line).
                 </p>
                 <canvas id="varCanvas" width="820" height="260"></canvas>
             </div>
         </section>
 
-        <!-- 4. COMPARATIVE DISCUSSION -->
+        <!-- 4. MATHEMATICAL SYNTHESIS & BERRY-ESSEEN -->
         <section>
-            <h2>4. Mathematical Synthesis: LLN, CLT, and Variance Invariance</h2>
+            <h2>4. Mathematical Synthesis: LLN, CLT, and Berry-Esseen Convergence Rates</h2>
             
             <table class="comparison-table">
                 <thead>
@@ -328,14 +362,18 @@
             </table>
 
             <div class="stat-callout">
-                <h4 style="margin-top:0; color:#27ae60;">The Law of the Iterated Logarithm (LIL)</h4>
+                <h4 style="margin-top:0; color:#27ae60;">The Berry-Esseen Theorem: Quantitative Convergence Rate to Normality</h4>
                 <p>
-                    While the Central Limit Theorem establishes that fluctuations of $S_n$ scale as $\sqrt{n}$ with Gaussian probabilities, the extreme excursions of individual trajectories over time are governed by Khinchin's <strong>Law of the Iterated Logarithm</strong>:
+                    The Central Limit Theorem asserts convergence in distribution as $n \to \infty$, but does not state <em>how quickly</em> the Gaussian shape is reached. The <strong>Berry-Esseen Theorem</strong> provides the exact non-asymptotic error bound between the normalized CDF $F_n(x)$ and the standard normal $\Phi(x)$:
                 </p>
-                $$\limsup_{n \to \infty} \frac{S_n}{\sqrt{2n \ln \ln n}} = \sigma \quad \text{almost surely}$$
-                <p style="margin-bottom:0;">
-                    This proves that even in a balanced symmetric Rademacher model ($\mu = 0$), any attacker who tests indefinitely will inevitably achieve excursions exceeding $\pm \sqrt{2n \ln \ln n}$, even though the average score converges to 0.
+                $$\sup_{x \in \mathbb{R}} \left| F_n(x) - \Phi(x) \right| \le \frac{C \cdot \rho}{\sigma^3 \sqrt{n}}$$
+                <p>
+                    where $\rho = \mathbb{E}[|X - \mu|^3]$ is the third absolute central moment and $C \le 0.4748$ is the Shevtsova constant.
                 </p>
+                <ul>
+                    <li>In the <strong>Rademacher model</strong>, symmetry implies zero skewness ($\gamma_1 = 0$) and $\rho = 1$, yielding the rapid convergence rate $\approx \frac{0.47}{\sqrt{n}}$. At $n = 500$, the maximum discrepancy is bounded below $0.021$.</li>
+                    <li>In the <strong>Bernoulli model</strong> with asymmetric $p \ne 0.5$, skewness is non-zero ($\frac{1-2p}{\sqrt{p(1-p)}}$), creating visible skewness on small $n$ before the $O(1/\sqrt{n})$ dampening takes effect.</li>
+                </ul>
             </div>
         </section>
 
@@ -386,6 +424,6 @@
     </footer>
 
     <!-- Cache-busting script link -->
-    <script src="script.js?v=1"></script>
+    <script src="script.js?v=2"></script>
 </body>
 </html>

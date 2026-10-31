@@ -154,6 +154,20 @@ mean += delta / k;
 M2 += delta * (x - mean);  <span style="color:#7f8c8d;">// (x - mean) automatically evaluates (x - new_mean)</span>
             </div>
 
+            <!-- THEORETICAL EXTENSION: HIGHER-ORDER MOMENTS -->
+            <div class="stat-callout" style="border-left-color: #8e44ad; margin-top: 1.5rem;">
+                <h4 style="margin-top:0; color:#8e44ad;">Theoretical Extension: Online Higher-Order Moments (Skewness & Kurtosis)</h4>
+                <p>
+                    In 2007, Timothy B. Terriberry and Donald Knuth demonstrated that Welford’s single-pass philosophy extends analytically to the third ($M_3$) and fourth ($M_4$) central moments:
+                </p>
+                $$\delta_k = x_k - \bar{x}_{k-1}, \quad \bar{x}_k = \bar{x}_{k-1} + \frac{\delta_k}{k}, \quad \delta_k^* = x_k - \bar{x}_k$$
+                $$M_{3, k} = M_{3, k-1} + \delta_k \delta_k^* (\delta_k - \delta_k^*) - 3 \frac{\delta_k}{k} M_{2, k-1}$$
+                $$M_{4, k} = M_{4, k-1} + \delta_k \delta_k^* (\delta_k^2 - \delta_k \delta_k^* + (\delta_k^*)^2) + 6 \frac{\delta_k^2}{k^2} M_{2, k-1} - 4 \frac{\delta_k}{k} M_{3, k-1}$$
+                <p style="margin-bottom:0;">
+                    From these sums, one computes streaming Sample Skewness $g_1 = \frac{\sqrt{k} M_{3, k}}{M_{2, k}^{3/2}}$ and Sample Kurtosis $g_2 = \frac{k M_{4, k}}{M_{2, k}^2} - 3$ in a single streaming pass using strict $O(1)$ memory!
+                </p>
+            </div>
+
             <!-- INTERACTIVE NUMERICAL STABILITY PLAYGROUND -->
             <div class="panel" style="margin-top: 1.5rem; border-left: 4px solid #27ae60;">
                 <h3 style="margin-top:0; color:#27ae60;">Interactive Numerical Stability Playground: Welford vs. Naive Formula</h3>
@@ -273,16 +287,19 @@ M2 += delta * (x - mean);  <span style="color:#7f8c8d;">// (x - mean) automatica
                 <h3 style="margin-top:0;">1. Sampling Distributions Across All $m$ Hackers at System Depth $n$</h3>
                 <p style="font-size:0.9rem; color:#555;">
                     <strong>Left:</strong> Empirical distribution of the hacker sample means $\bar{X}_j$, plotted against the Central Limit Theorem theoretical Gaussian density $\mathcal{N}(\mu, \sigma^2/n)$ (red curve). 
-                    <strong>Right:</strong> Empirical distribution of the hacker sample variances $S_j^2$, showing exact centering at the theoretical population variance $\sigma^2$ (green dashed line).
+                    <strong>Right:</strong> Empirical distribution of the hacker sample variances $S_j^2$, plotted against the <strong>exact theoretical Scaled Chi-Square Density $\frac{(n-1)S^2}{\sigma^2} \sim \chi^2_{n-1}$</strong> (red curve). Notice the right-skewness at small $n$!
                 </p>
                 <canvas id="dualHistCanvas" width="820" height="260"></canvas>
             </div>
 
             <!-- CANVAS 2: WELFORD STREAM TRAJECTORIES -->
             <div class="panel" style="margin-top: 1.5rem;">
-                <h3 style="margin-top:0;">2. Welford Online Convergence for Sample Hackers Across Steps $k = 1 \dots n$</h3>
-                <p style="font-size:0.9rem; color:#555;">
-                    Traces the running sample mean $\bar{x}_k$ (blue lines) and running sample variance $s_k^2$ (red lines) updating dynamically with every incoming score $X_k$ via Welford’s 3-line algorithm. Notice how both estimators rapidly stabilize onto the dashed theoretical targets $\mu$ and $\sigma^2$.
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                    <h3 style="margin:0;">2. Welford Online Convergence for Sample Hackers Across Steps $k = 1 \dots n$</h3>
+                    <button class="btn-success" id="playStreamBtn">▶ Play Stream Evolution</button>
+                </div>
+                <p style="font-size:0.9rem; color:#555; margin-top:0.5rem;">
+                    Traces the running sample mean $\bar{x}_k$ (blue lines) and running sample variance $s_k^2$ (red lines) updating dynamically with every incoming score $X_k$ via Welford’s 3-line algorithm. Press <strong>"Play Stream Evolution"</strong> to watch the random walk stream dynamically in real time.
                 </p>
                 <canvas id="trajCanvas" width="820" height="260"></canvas>
             </div>
@@ -338,9 +355,66 @@ M2 += delta * (x - mean);  <span style="color:#7f8c8d;">// (x - mean) automatica
                     $$\mathbb{E}\left[\frac{1}{n} \sum_{i=1}^n (X_i - \bar{X})^2\right] = \frac{n-1}{n} \sigma^2$$
                     By dividing by the degrees of freedom $n - 1$ instead of $n$ (<strong>Bessel's correction</strong>), the estimator becomes strictly unbiased:
                     $$\mathbb{E}[S^2] = \mathbb{E}\left[\frac{1}{n-1} M_2\right] = \frac{1}{n-1} \cdot (n-1)\sigma^2 = \sigma^2$$
-                    Our simulation numerically verifies this: the grand average with $(n-1)$ matches $\sigma^2$, whereas the division by $n$ produces a visible negative bias of precisely $\frac{\sigma^2}{n}$.
                 </li>
             </ol>
+
+            <!-- QUANTITATIVE BESSEL TABLE -->
+            <h4 style="margin-top: 1.5rem;">Quantitative Bias of Naive Variance ($\frac{M_2}{n}$) vs. Degrees of Freedom:</h4>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Sample Size ($n$)</th>
+                        <th>Degrees of Freedom ($n - 1$)</th>
+                        <th>Expected Biased Variance $\mathbb{E}[S_{\text{biased}}^2]$</th>
+                        <th>Underestimation Factor (Bias)</th>
+                        <th>Bessel Correction Multiplier $\frac{n}{n-1}$</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>$n = 2$</td>
+                        <td>$1$</td>
+                        <td>$0.500 \cdot \sigma^2$</td>
+                        <td><span style="color:#e74c3c; font-weight:bold;">-50.0% (Massive Bias!)</span></td>
+                        <td>$\times 2.000$</td>
+                    </tr>
+                    <tr>
+                        <td>$n = 5$</td>
+                        <td>$4$</td>
+                        <td>$0.800 \cdot \sigma^2$</td>
+                        <td><span style="color:#e74c3c; font-weight:bold;">-20.0% Underestimation</span></td>
+                        <td>$\times 1.250$</td>
+                    </tr>
+                    <tr>
+                        <td>$n = 10$</td>
+                        <td>$9$</td>
+                        <td>$0.900 \cdot \sigma^2$</td>
+                        <td><span style="color:#e67e22; font-weight:bold;">-10.0% Underestimation</span></td>
+                        <td>$\times 1.111$</td>
+                    </tr>
+                    <tr>
+                        <td>$n = 20$</td>
+                        <td>$19$</td>
+                        <td>$0.950 \cdot \sigma^2$</td>
+                        <td>-5.0% Underestimation</td>
+                        <td>$\times 1.053$</td>
+                    </tr>
+                    <tr>
+                        <td>$n = 50$</td>
+                        <td>$49$</td>
+                        <td>$0.980 \cdot \sigma^2$</td>
+                        <td>-2.0% Underestimation</td>
+                        <td>$\times 1.020$</td>
+                    </tr>
+                    <tr>
+                        <td>$n = 500$</td>
+                        <td>$499$</td>
+                        <td>$0.998 \cdot \sigma^2$</td>
+                        <td><span style="color:#27ae60; font-weight:bold;">-0.2% (Negligible)</span></td>
+                        <td>$\times 1.002$</td>
+                    </tr>
+                </tbody>
+            </table>
 
             <h3>2. Why are these results useful in inferential statistics?</h3>
             <p>
@@ -389,10 +463,10 @@ M2 += delta * (x - mean);  <span style="color:#7f8c8d;">// (x - mean) automatica
                         <td>Decays as $O(1/n)$</td>
                     </tr>
                     <tr>
-                        <td><strong>Cybersecurity Implication</strong></td>
-                        <td>A hacker can appear elite or inept purely through sample noise.</td>
-                        <td>Stochastic luck is eliminated; sample stats reflect true ground truth.</td>
-                        <td>Law of Large Numbers asymptotic convergence.</td>
+                        <td><strong>Sampling Distribution Shape of $S^2$</strong></td>
+                        <td>Heavily right-skewed Chi-Square $\chi^2_{4}$</td>
+                        <td>Symmetric Normal $\mathcal{N}(\sigma^2, 2\sigma^4/499)$ by CLT</td>
+                        <td>Approaches Gaussian asymptotically</td>
                     </tr>
                 </tbody>
             </table>
@@ -404,6 +478,6 @@ M2 += delta * (x - mean);  <span style="color:#7f8c8d;">// (x - mean) automatica
     </footer>
 
     <!-- Cache-busting script link -->
-    <script src="script.js?v=1"></script>
+    <script src="script.js?v=2"></script>
 </body>
 </html>

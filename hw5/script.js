@@ -2,11 +2,11 @@
 // HOMEWORK 5 - WELFORD'S RECURRENCE, SAMPLING MEAN & VARIANCE
 // Dario Pietrosanto (2055042)
 // Master's Degree Course in Applied Statistics & Cybersecurity
-// Real-time Interactive Engine:
+// Real-time Interactive Engine (Guru Level):
 // 1. Welford's Algorithm vs. Naive Formula Numerical Stability Playground
 // 2. Multi-Hacker Penetration Simulation on Discrete Score Distributions [0, 10]
-// 3. Online Single-Pass Stream Trajectories (Running Mean & Running Variance)
-// 4. Sampling Distribution Histograms for X_bar and S^2 with Theoretical Overlays
+// 3. Online Single-Pass Stream Trajectories with Real-Time Play Evolution
+// 4. Sampling Distribution Histograms for X_bar (CLT Normal) and S^2 (Scaled Chi-Square PDF)
 // 5. Grand Ensemble Comparison vs. Theoretical Moments (Unbiasedness & Bessel's Correction)
 // 6. Empirical Variability Scaling as a Function of System Depth n (O(1/n) Decay)
 // ============================================================================
@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mDisplay = document.getElementById('mDisplay');
     const runSimBtn = document.getElementById('runSimBtn');
     const runBatchNBtn = document.getElementById('runBatchNBtn');
+    const playStreamBtn = document.getElementById('playStreamBtn');
 
     // Canvas elements
     const dualHistCanvas = document.getElementById('dualHistCanvas');
@@ -64,6 +65,33 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.height = Math.round(displayHeight * dpr);
         ctx.scale(dpr, dpr);
         return { w: displayWidth, h: displayHeight };
+    }
+
+    // Lanczos approximation for log-Gamma function ln(Gamma(z))
+    function logGamma(z) {
+        const c = [
+            0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+            771.32342877765313, -176.61502916214059, 12.507343278686905,
+            -0.13857109585720572, 9.9843695780195716e-6, 1.5056327351493116e-7
+        ];
+        if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z);
+        z -= 1;
+        let x = c[0];
+        for (let i = 1; i < c.length; i++) x += c[i] / (z + i);
+        let t = z + c.length - 1.5;
+        return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+    }
+
+    // Exact Theoretical Probability Density Function for Sample Variance S^2
+    // (n-1)*S^2 / sigma^2 ~ Chi-Square(df = n-1)
+    function sampleVarPDF(s2, n, sigma2) {
+        if (s2 <= 0 || n <= 2 || sigma2 <= 0) return 0;
+        const k = n - 1; // degrees of freedom
+        const u = (k * s2) / sigma2;
+        if (u <= 0) return 0;
+        const logChi2 = - (k / 2) * Math.LN2 - logGamma(k / 2) + (k / 2 - 1) * Math.log(u) - u / 2;
+        const chi2PDF = Math.exp(logChi2);
+        return chi2PDF * (k / sigma2);
     }
 
     // ------------------------------------------------------------------------
@@ -180,18 +208,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ------------------------------------------------------------------------
     // SECTION 2: PENETRATION SCORE DISTRIBUTIONS [0, 10] (EXERCISE 2)
     // ------------------------------------------------------------------------
-    // Preset distributions on support {0, 1, ..., 10}
     function getDistributionParams() {
         const type = distSelect.value;
         const pBin = parseFloat(pBinomialInput.value);
 
         if (type === 'binomial') {
-            // Binomial(10, p)
-            // mu = 10 * p
-            // sigma2 = 10 * p * (1 - p)
             const mu = 10 * pBin;
             const sigma2 = 10 * pBin * (1 - pBin);
-            const rho4 = 10 * pBin * (1 - pBin) * (1 + 3 * 8 * pBin * (1 - pBin)); // 4th central moment
+            const rho4 = 10 * pBin * (1 - pBin) * (1 + 3 * 8 * pBin * (1 - pBin));
             return {
                 type: 'binomial',
                 name: `Binomial(10, p=${pBin.toFixed(2)})`,
@@ -208,12 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         } else if (type === 'uniform') {
-            // Discrete Uniform on {0, 1, ..., 10}
-            // mu = (0 + 10) / 2 = 5.0
-            // sigma2 = (11^2 - 1) / 12 = 120 / 12 = 10.0
             const mu = 5.0;
             const sigma2 = 10.0;
-            // 4th central moment: 1/11 * sum_{k=0}^10 (k - 5)^4 = 2*(1+16+81+256+625)/11 = 178.0
             const rho4 = 178.0;
             return {
                 type: 'uniform',
@@ -225,15 +245,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 sample: () => Math.floor(Math.random() * 11)
             };
         } else {
-            // Bimodal Severity Distribution:
-            // 70% chance of reconnaissance score (Binomial(3, 0.5) => mean 1.5)
-            // 30% chance of critical breach score (7 + Binomial(3, 0.8) => mean 9.4)
-            // Calculated theoretical moments by mixture
             const p1 = 0.7, p2 = 0.3;
-            const mu1 = 1.5, s2_1 = 3 * 0.5 * 0.5; // 0.75
-            const mu2 = 7 + 3 * 0.8; // 9.4, s2_2 = 3 * 0.8 * 0.2 = 0.48
-            const mu = p1 * mu1 + p2 * mu2; // 0.7*1.5 + 0.3*9.4 = 1.05 + 2.82 = 3.87
-            // Var(X) = E[X^2] - mu^2
+            const mu1 = 1.5, s2_1 = 3 * 0.5 * 0.5;
+            const mu2 = 7 + 3 * 0.8;
+            const mu = p1 * mu1 + p2 * mu2;
             const EX2 = p1 * (s2_1 + mu1 * mu1) + p2 * (s2_2 + mu2 * mu2);
             const sigma2 = EX2 - mu * mu;
             return {
@@ -270,9 +285,9 @@ document.addEventListener('DOMContentLoaded', () => {
     nInput.addEventListener('input', () => { syncSimControls(); runSimulation(); });
     mInput.addEventListener('input', () => { syncSimControls(); runSimulation(); });
 
-    // Preset buttons in HW5
     document.querySelectorAll('.hw5-preset-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+            stopStreamAnim();
             const dist = btn.getAttribute('data-dist');
             const nVal = parseInt(btn.getAttribute('data-n'), 10);
             const mVal = parseInt(btn.getAttribute('data-m'), 10);
@@ -292,8 +307,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // SECTION 3: MULTI-HACKER SIMULATION RUNNER
     // ------------------------------------------------------------------------
     let lastSimResults = null;
+    let streamAnimTimer = null;
+    let streamCurrentK = 2;
+
+    function stopStreamAnim() {
+        if (streamAnimTimer) {
+            clearInterval(streamAnimTimer);
+            streamAnimTimer = null;
+            playStreamBtn.textContent = '▶ Play Stream Evolution';
+        }
+    }
 
     function runSimulation() {
+        stopStreamAnim();
         syncSimControls();
         const dist = getDistributionParams();
         const n = parseInt(nInput.value, 10);
@@ -303,7 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const hackerVars = new Float64Array(m);
         const hackerBiasedVars = new Float64Array(m);
 
-        // Store sample trajectory updates for the first 5 hackers for Canvas 2
         const sampleCount = Math.min(5, m);
         const sampleTrajectories = [];
         for (let j = 0; j < sampleCount; j++) {
@@ -313,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Run simulation across m hackers
         for (let j = 0; j < m; j++) {
             let mean = 0;
             let M2 = 0;
@@ -343,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hackerBiasedVars[j] = M2 / n;
         }
 
-        // Compute Grand Ensemble Statistics across m hackers
+        // Grand Ensemble Statistics across m hackers
         let sumMeans = 0;
         let sumVars = 0;
         let sumBiasedVars = 0;
@@ -385,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateMetricsDisplay(lastSimResults);
         drawDualHistogram(lastSimResults);
-        drawTrajectoryCanvas(lastSimResults);
+        drawTrajectoryCanvas(lastSimResults, n);
     }
 
     function updateMetricsDisplay(d) {
@@ -418,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ------------------------------------------------------------------------
-    // CANVAS 1: DUAL HISTOGRAMS (SAMPLING MEAN & SAMPLING VARIANCE)
+    // CANVAS 1: DUAL HISTOGRAMS (SAMPLING MEAN & SAMPLING VARIANCE WITH CHI-SQUARE PDF)
     // ------------------------------------------------------------------------
     function drawDualHistogram(d) {
         const { w, h } = setupHiDPI(dualHistCanvas, dualHistCtx);
@@ -429,8 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const chartW = halfW - padX - 20;
         const chartH = h - 2 * padY;
 
-        // Sub-function to draw a single histogram with curve
-        function plotHistogram(dataArr, targetMean, targetVar, isGaussianCurve, startX, title, unit) {
+        // Sub-function to draw a single histogram with exact density overlay
+        function plotHistogram(dataArr, targetMean, targetVar, curveType, startX, title) {
             let minVal = Infinity, maxVal = -Infinity;
             for (let i = 0; i < dataArr.length; i++) {
                 if (dataArr[i] < minVal) minVal = dataArr[i];
@@ -438,10 +462,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             let span = maxVal - minVal;
             if (span < 1e-4) span = 1;
-            minVal -= span * 0.08;
+            minVal = Math.max(0, minVal - span * 0.08);
             maxVal += span * 0.08;
 
-            const numBins = Math.min(30, Math.max(12, Math.floor(Math.sqrt(dataArr.length))));
+            const numBins = Math.min(32, Math.max(12, Math.floor(Math.sqrt(dataArr.length))));
             const binW = (maxVal - minVal) / numBins;
             const bins = new Uint32Array(numBins);
 
@@ -459,9 +483,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (densities[i] > maxDensity) maxDensity = densities[i];
             }
 
-            if (isGaussianCurve) {
+            if (curveType === 'gaussian') {
                 const peak = 1 / (Math.sqrt(targetVar * 2 * Math.PI));
                 if (peak > maxDensity) maxDensity = peak * 1.15;
+            } else if (curveType === 'chisquare') {
+                // Peak of scaled Chi-Square PDF
+                const modeVal = Math.max(0.1, ((d.n - 3) / (d.n - 1)) * d.dist.sigma2);
+                const peak = sampleVarPDF(modeVal, d.n, d.dist.sigma2);
+                if (peak > maxDensity && peak < maxDensity * 2.5) maxDensity = peak * 1.15;
             } else {
                 maxDensity *= 1.15;
             }
@@ -500,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Draw Theoretical Overlay
-            if (isGaussianCurve && targetVar > 1e-6) {
+            if (curveType === 'gaussian' && targetVar > 1e-6) {
                 const sigma = Math.sqrt(targetVar);
                 dualHistCtx.strokeStyle = '#e74c3c';
                 dualHistCtx.lineWidth = 2.5;
@@ -509,6 +538,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     let v = minVal + (i / 100) * (maxVal - minVal);
                     let z = (v - targetMean) / sigma;
                     let pdf = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * z * z);
+                    let sx = toX(v);
+                    let sy = toY(pdf);
+                    if (i === 0) dualHistCtx.moveTo(sx, sy);
+                    else dualHistCtx.lineTo(sx, sy);
+                }
+                dualHistCtx.stroke();
+            } else if (curveType === 'chisquare') {
+                dualHistCtx.strokeStyle = '#e74c3c';
+                dualHistCtx.lineWidth = 2.5;
+                dualHistCtx.beginPath();
+                for (let i = 0; i <= 100; i++) {
+                    let v = minVal + (i / 100) * (maxVal - minVal);
+                    let pdf = sampleVarPDF(v, d.n, d.dist.sigma2);
                     let sx = toX(v);
                     let sy = toY(pdf);
                     if (i === 0) dualHistCtx.moveTo(sx, sy);
@@ -551,28 +593,26 @@ document.addEventListener('DOMContentLoaded', () => {
             d.hackerMeans,
             d.dist.mu,
             d.dist.sigma2 / d.n,
-            true,
+            'gaussian',
             0,
-            `1. Sampling Means (X̄) across ${d.m} Hackers [n = ${d.n}]`,
-            'Score'
+            `1. Sampling Means (X̄) across ${d.m} Hackers [CLT Normal Fit]`
         );
 
-        // Right Plot: Sampling Variances
+        // Right Plot: Sampling Variances with exact Scaled Chi-Square Density
         plotHistogram(
             d.hackerVars,
             d.dist.sigma2,
             d.varOfSampleVars,
-            false,
+            'chisquare',
             halfW,
-            `2. Sampling Variances (S²) across ${d.m} Hackers [Target: σ²=${d.dist.sigma2.toFixed(2)}]`,
-            'Var'
+            `2. Sampling Variances (S²) [Exact Scaled χ²ₙ₋₁ PDF Overlay]`
         );
     }
 
     // ------------------------------------------------------------------------
     // CANVAS 2: WELFORD STREAM TRAJECTORIES FOR SAMPLE HACKERS
     // ------------------------------------------------------------------------
-    function drawTrajectoryCanvas(d) {
+    function drawTrajectoryCanvas(d, currentN) {
         const { w, h } = setupHiDPI(trajCanvas, trajCtx);
         trajCtx.clearRect(0, 0, w, h);
 
@@ -583,9 +623,8 @@ document.addEventListener('DOMContentLoaded', () => {
         trajCtx.fillStyle = '#2c3e50';
         trajCtx.font = 'bold 12px sans-serif';
         trajCtx.textAlign = 'left';
-        trajCtx.fillText(`Welford Online Stream Convergence across System Index k = 1 .. ${d.n} for 5 Sample Hackers:`, padX, padY - 14);
+        trajCtx.fillText(`Welford Online Stream Convergence across System Index k = 1 .. ${currentN} for 5 Sample Hackers:`, padX, padY - 14);
 
-        // Find Y range for both running mean and running variance
         let minY = 0, maxY = 10;
         d.sampleTrajectories.forEach(traj => {
             for (let k = 1; k <= d.n; k++) {
@@ -607,7 +646,6 @@ document.addEventListener('DOMContentLoaded', () => {
         trajCtx.stroke();
 
         // Horizontal target lines
-        // 1. Target Mean mu
         let yMu = toY(d.dist.mu);
         trajCtx.strokeStyle = 'rgba(52, 152, 219, 0.8)';
         trajCtx.lineWidth = 2;
@@ -617,7 +655,6 @@ document.addEventListener('DOMContentLoaded', () => {
         trajCtx.lineTo(w - 25, yMu);
         trajCtx.stroke();
 
-        // 2. Target Variance sigma2
         let ySigma2 = toY(d.dist.sigma2);
         trajCtx.strokeStyle = 'rgba(231, 76, 60, 0.8)';
         trajCtx.lineWidth = 2;
@@ -627,13 +664,13 @@ document.addEventListener('DOMContentLoaded', () => {
         trajCtx.stroke();
         trajCtx.setLineDash([]);
 
-        // Plot trajectories for sample hackers
+        // Plot trajectories for sample hackers up to currentN
         d.sampleTrajectories.forEach((traj, idx) => {
             // Running Mean lines (Blue hues)
-            trajCtx.strokeStyle = `rgba(52, 152, 219, ${0.4 + idx * 0.15})`;
+            trajCtx.strokeStyle = `rgba(52, 152, 219, ${0.45 + idx * 0.12})`;
             trajCtx.lineWidth = 1.6;
             trajCtx.beginPath();
-            for (let k = 1; k <= d.n; k++) {
+            for (let k = 1; k <= currentN; k++) {
                 let sx = toX(k);
                 let sy = toY(traj.means[k]);
                 if (k === 1) trajCtx.moveTo(sx, sy);
@@ -642,10 +679,10 @@ document.addEventListener('DOMContentLoaded', () => {
             trajCtx.stroke();
 
             // Running Variance lines (Orange/Red hues)
-            trajCtx.strokeStyle = `rgba(231, 76, 60, ${0.4 + idx * 0.15})`;
+            trajCtx.strokeStyle = `rgba(231, 76, 60, ${0.45 + idx * 0.12})`;
             trajCtx.lineWidth = 1.6;
             trajCtx.beginPath();
-            for (let k = 2; k <= d.n; k++) {
+            for (let k = 2; k <= currentN; k++) {
                 let sx = toX(k);
                 let sy = toY(traj.vars[k]);
                 if (k === 2) trajCtx.moveTo(sx, sy);
@@ -685,6 +722,30 @@ document.addEventListener('DOMContentLoaded', () => {
         trajCtx.fillStyle = '#2c3e50';
         trajCtx.fillText(`Running Sample Variance sₖ² → σ² = ${d.dist.sigma2.toFixed(2)}`, w - 30, 37);
     }
+
+    // Interactive Stream Animation Controller
+    playStreamBtn.addEventListener('click', () => {
+        if (streamAnimTimer) {
+            stopStreamAnim();
+            return;
+        }
+        if (!lastSimResults) runSimulation();
+        playStreamBtn.textContent = '⏸ Pause Stream';
+
+        streamCurrentK = 2;
+        const stepInc = Math.max(1, Math.floor(lastSimResults.n / 60));
+
+        streamAnimTimer = setInterval(() => {
+            streamCurrentK += stepInc;
+            if (streamCurrentK >= lastSimResults.n) {
+                streamCurrentK = lastSimResults.n;
+                drawTrajectoryCanvas(lastSimResults, streamCurrentK);
+                stopStreamAnim();
+                return;
+            }
+            drawTrajectoryCanvas(lastSimResults, streamCurrentK);
+        }, 35);
+    });
 
     // ------------------------------------------------------------------------
     // CANVAS 3: VARIANCE DECAY ANALYSIS VS. SYSTEM DEPTH n (EXERCISE 2 PART B)
@@ -748,7 +809,6 @@ document.addEventListener('DOMContentLoaded', () => {
         decayCtx.textAlign = 'left';
         decayCtx.fillText('Variability Decay of Sampling Statistics across System Depth n (O(1/n) Scaling):', padX, padY - 14);
 
-        // Max Y
         let maxY = Math.max(...empMeans, ...thMeans, ...empVars);
         maxY *= 1.1;
 

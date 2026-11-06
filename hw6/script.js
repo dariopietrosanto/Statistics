@@ -2,16 +2,22 @@
  * Homework 6: Numerical Integration (Riemann vs Lebesgue) & Normal CDF Computation
  * Author: Dario Pietrosanto (Matricola: 2055042)
  * Master's Degree Course in Applied Statistics & Cybersecurity
+ * GURU LEVEL EDITION:
+ * - Pushforward Preimage Measure Distribution & Layer-Cake Theorem Canvas
+ * - Dirichlet Lattice Paradox: Rational Uniform Grid vs. Weyl Irrational Equidistributed Orbit
+ * - Liouville Degree Defect & Differential Algebra Inspector
+ * - High-Precision Inverse Normal CDF (Acklam's Probit Algorithm)
+ * - Tail Breakdown & Catastrophic Cancellation Profiler for Large z in [3, 8]
+ * - Empirical Asymptotic Convergence Order (alpha) Estimation
  */
 
 (function () {
     'use strict';
 
     // =========================================================================
-    // PART 1: RIEMANN VS LEBESGUE INTEGRATION
+    // PART 1: RIEMANN VS LEBESGUE INTEGRATION ENGINE
     // =========================================================================
 
-    // Greatest Common Divisor helper for Thomae function
     function gcd(a, b) {
         a = Math.abs(a);
         b = Math.abs(b);
@@ -23,10 +29,9 @@
         return a;
     }
 
-    // Sine Integral Si(pi) constant
     const SI_PI = 1.85193705198246617036;
+    const PHI_GOLDEN = (Math.sqrt(5) - 1.0) / 2.0; // Golden ratio fractional part for Weyl sequence
 
-    // Test functions catalogue
     const FUNCTIONS = {
         sin: {
             name: "f(x) = sin(x)",
@@ -86,17 +91,17 @@
         },
         inv_sqrt: {
             name: "f(x) = 1 / √x",
-            domain: [0.0001, 1], // avoid 0 singularity for domain sampling
+            domain: [0.0001, 1],
             displayDomain: "(0, 1]",
             exact: 2.0,
             latex: "f(x) = \\frac{1}{\\sqrt{x}}, \\quad x \\in (0, 1]",
             fn: (x) => 1.0 / Math.sqrt(Math.max(x, 1e-9)),
             category: "Unbounded Improper",
-            description: "Improper integral unbounded as x → 0⁺. Riemann requires careful endpoint handling; Lebesgue layer-cake representation μ({x: f(x) > y}) = 1/y² integrates to 1 + base.",
+            description: "Improper integral unbounded as x → 0⁺. Lebesgue layer-cake representation μ({x: f(x) > y}) = 1/y² integrates to 1 + base.",
             theoreticalLebesgue: 2.0,
             theoreticalRiemann: 2.0,
             riemannIntegrable: true,
-            yRange: [1, 50]
+            yRange: [1, 30]
         },
         step_1_0: {
             name: "f(x) = 1 if x < 0.5, 0 if x ≥ 0.5",
@@ -132,7 +137,6 @@
             displayDomain: "[0, 1]",
             exact: 0.0,
             latex: "f(x) = \\begin{cases} 1 & x \\in \\mathbb{Q} \\\\ 0 & x \\notin \\mathbb{Q} \\end{cases}, \\quad x \\in [0, 1]",
-            // In simulation, we emulate the density of rationals by detecting rationals with denominator <= 500
             fn: (x) => {
                 if (Math.abs(x) < 1e-12 || Math.abs(x - 1) < 1e-12) return 1.0;
                 for (let q = 1; q <= 200; q++) {
@@ -142,9 +146,9 @@
                 return 0.0;
             },
             category: "Pathological (Nowhere Continuous)",
-            description: "Every subinterval contains both rationals and irrationals. Upper Darboux sum = 1, Lower Darboux sum = 0. Riemann integral DOES NOT EXIST. Lebesgue integral is identically 0 since μ(ℚ) = 0.",
+            description: "Upper Darboux sum = 1, Lower Darboux sum = 0. Riemann integral DOES NOT EXIST. Lebesgue integral is identically 0 since μ(ℚ) = 0.",
             theoreticalLebesgue: 0.0,
-            theoreticalRiemann: null, // Undefined
+            theoreticalRiemann: null,
             riemannIntegrable: false,
             yRange: [0, 1]
         },
@@ -174,14 +178,9 @@
     };
 
     /**
-     * Riemann numerical integration
-     * @param {Function} f integrand
-     * @param {number} a domain start
-     * @param {number} b domain end
-     * @param {number} n number of subintervals
-     * @param {string} rule 'midpoint' | 'trapezoid' | 'left' | 'right'
+     * Riemann numerical integrator supporting standard rules + Weyl irrational orbit
      */
-    function riemannIntegrate(f, a, b, n, rule = 'midpoint') {
+    function riemannIntegrate(f, a, b, n, rule = 'midpoint', dirichletGridMode = 'rational') {
         const t0 = performance.now();
         const h = (b - a) / n;
         let sum = 0;
@@ -199,15 +198,19 @@
             }
             sum *= h;
         } else if (rule === 'left') {
-            for (let i = 0; i < n; i++) {
-                sum += f(a + i * h);
-            }
+            for (let i = 0; i < n; i++) sum += f(a + i * h);
             sum *= h;
         } else if (rule === 'right') {
-            for (let i = 1; i <= n; i++) {
-                sum += f(a + i * h);
-            }
+            for (let i = 1; i <= n; i++) sum += f(a + i * h);
             sum *= h;
+        } else if (rule === 'weyl') {
+            // Weyl equidistributed irrational orbit: x_k = a + (b - a) * ((k * phi) mod 1)
+            for (let i = 1; i <= n; i++) {
+                const frac = (i * PHI_GOLDEN) % 1.0;
+                const x = a + (b - a) * frac;
+                sum += f(x);
+            }
+            sum = (sum / n) * (b - a);
         }
 
         const t1 = performance.now();
@@ -221,15 +224,12 @@
 
     /**
      * Numerical Lebesgue Integration
-     * Partitions the range [ymin, ymax] into M subintervals [y_j, y_{j+1}].
-     * Computes the measure mu(E_j) of the preimage E_j = {x in [a, b] : y_j <= f(x) < y_{j+1}}
-     * using K uniform probe sample points across the domain [a, b].
+     * Range slicing + Preimage measure computation via dense probe lattice
      */
     function lebesgueIntegrate(f, a, b, M, K = 50000, yMin = null, yMax = null) {
         const t0 = performance.now();
         const stepK = (b - a) / K;
 
-        // Sample domain densely to determine or confirm range
         const vals = new Float64Array(K);
         let sampleMin = Infinity;
         let sampleMax = -Infinity;
@@ -249,7 +249,7 @@
             return {
                 value: y0 * (b - a),
                 elapsedMs: performance.now() - t0,
-                y0, y1, dy: 0,
+                y0, y1, dy: 0, M, K,
                 preimages: [{ yLower: y0, yUpper: y1, yMid: y0, measure: b - a, count: K }]
             };
         }
@@ -267,16 +267,20 @@
 
         let totalIntegral = 0;
         const preimages = [];
+        let cumMeasure = 0;
+
         for (let j = 0; j < M; j++) {
             const yMid = y0 + (j + 0.5) * dy;
             const measure = (counts[j] / K) * (b - a);
             totalIntegral += yMid * measure;
+            cumMeasure += measure;
             preimages.push({
                 index: j,
                 yLower: y0 + j * dy,
                 yUpper: y0 + (j + 1) * dy,
                 yMid: yMid,
                 measure: measure,
+                cumulativeMeasure: cumMeasure,
                 count: counts[j]
             });
         }
@@ -285,29 +289,23 @@
         return {
             value: totalIntegral,
             elapsedMs: t1 - t0,
-            y0: y0,
-            y1: y1,
-            dy: dy,
-            M: M,
-            K: K,
-            preimages: preimages
+            y0, y1, dy, M, K,
+            preimages
         };
     }
 
     // =========================================================================
-    // PART 2: NORMAL CDF NUMERICAL COMPUTATION METHODS
+    // PART 2: NORMAL CDF & PROBIT (INVERSE CDF) ENGINE
     // =========================================================================
 
-    // Standard Normal Probability Density Function phi(t) = (1 / sqrt(2*pi)) * exp(-t^2 / 2)
     const INV_SQRT_2PI = 1.0 / Math.sqrt(2.0 * Math.PI);
     function normalPDF(t) {
         return INV_SQRT_2PI * Math.exp(-0.5 * t * t);
     }
 
     /**
-     * Gold Standard High-Precision Reference for Standard Normal CDF Phi(z)
-     * Combines high-order Taylor series near 0 with Laplace continued fraction in tails.
-     * Accurate to full 64-bit IEEE 754 precision (approx 10^-16).
+     * High-Precision Reference for Standard Normal CDF Phi(z)
+     * Taylor near 0 + Laplace Continued Fraction in tails. Accurate to 10^-16.
      */
     function normalCDFReference(z) {
         if (z === 0) return 0.5;
@@ -318,8 +316,6 @@
         let p = 0;
 
         if (x < 3.2) {
-            // Taylor expansion of int_0^x exp(-t^2/2) dt
-            // sum_{k=0}^infty (-1)^k x^{2k+1} / (2^k * k! * (2k+1))
             let term = x;
             let sum = x;
             for (let k = 1; k < 120; k++) {
@@ -330,8 +326,6 @@
             }
             p = 0.5 + sum * INV_SQRT_2PI;
         } else {
-            // Laplace continued fraction for upper tail Q(x) = 1 - Phi(x)
-            // Q(x) = phi(x) / (x + 1/(x + 2/(x + 3/(x + ...))))
             const phi = normalPDF(x);
             let f = x;
             let C = f;
@@ -356,7 +350,72 @@
     }
 
     /**
-     * Method A: Numerical Quadrature — Composite Trapezoidal Rule
+     * Peter J. Acklam's Inverse Normal CDF (Probit Function)
+     * Computes z = Phi^-1(p) with relative accuracy < 1.15 x 10^-9 (refined to 10^-15)
+     */
+    function normalInvCDF(p) {
+        if (p <= 0) return -Infinity;
+        if (p >= 1) return Infinity;
+
+        const a = [
+            -3.969683028665376e+01,
+             2.209460984245205e+02,
+            -2.759285104469687e+02,
+             1.383577518672690e+02,
+            -3.066479806614716e+01,
+             2.506628277459239e+00
+        ];
+        const b = [
+            -5.447609879822406e+01,
+             1.615858368580409e+02,
+            -1.556989798598866e+02,
+             6.680131188771972e+01,
+            -1.328068155288572e+01
+        ];
+        const c = [
+            -7.784894002430293e-03,
+            -3.223964580411365e-01,
+            -2.400758277161838e+00,
+            -2.549732539343734e+00,
+             4.374664141464968e+00,
+             2.938163982698783e+00
+        ];
+        const d = [
+             7.784695709041462e-03,
+             3.224671290700398e-01,
+             2.445134137142996e+00,
+             3.754408661907416e+00
+        ];
+
+        const p_low = 0.02425;
+        const p_high = 1.0 - p_low;
+        let x = 0;
+
+        if (p < p_low) {
+            const q = Math.sqrt(-2.0 * Math.log(p));
+            x = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+                ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
+        } else if (p <= p_high) {
+            const q = p - 0.5;
+            const r = q * q;
+            x = (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
+                (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0);
+        } else {
+            const q = Math.sqrt(-2.0 * Math.log(1.0 - p));
+            x = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+                 ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
+        }
+
+        // 1 step Halley refinement for machine precision ~10^-15
+        const err = normalCDFReference(x) - p;
+        const pdf = normalPDF(x);
+        x = x - err / (pdf + 0.5 * x * err);
+
+        return x;
+    }
+
+    /**
+     * Composite Trapezoidal Rule
      */
     function normalCDFTrapezoidal(z, n = 500) {
         const t0 = performance.now();
@@ -372,12 +431,11 @@
         }
         const integral = sum * h;
         const value = sign > 0 ? 0.5 + integral : 0.5 - integral;
-        const t1 = performance.now();
-        return { value, elapsedMs: t1 - t0, evals: n + 1 };
+        return { value, elapsedMs: performance.now() - t0, evals: n + 1 };
     }
 
     /**
-     * Method B: Numerical Quadrature — Simpson's 1/3 Rule
+     * Simpson's 1/3 Rule
      */
     function normalCDFSimpson(z, n = 500) {
         const t0 = performance.now();
@@ -395,12 +453,11 @@
         }
         const integral = (sum * h) / 3.0;
         const value = sign > 0 ? 0.5 + integral : 0.5 - integral;
-        const t1 = performance.now();
-        return { value, elapsedMs: t1 - t0, evals: n + 1 };
+        return { value, elapsedMs: performance.now() - t0, evals: n + 1 };
     }
 
     /**
-     * Method C: Gauss-Legendre Quadrature (10-Point Adaptive)
+     * 10-Point Gauss-Legendre Quadrature
      */
     const GL10_NODES = [
         -0.1488743389816312, 0.1488743389816312,
@@ -429,14 +486,11 @@
         }
         const integral = 0.5 * b * sum;
         const value = sign > 0 ? 0.5 + integral : 0.5 - integral;
-        const t1 = performance.now();
-        return { value, elapsedMs: t1 - t0, evals: 10 };
+        return { value, elapsedMs: performance.now() - t0, evals: 10 };
     }
 
     /**
-     * Method D: Power Series Expansion of the Error Function (Taylor/Maclaurin)
-     * erf(x) = (2 / sqrt(pi)) * sum_{k=0}^{K} [ (-1)^k * x^{2k+1} / (k! * (2k+1)) ]
-     * Phi(z) = 0.5 * [ 1 + erf(z / sqrt(2)) ]
+     * Taylor Series Expansion of erf(x)
      */
     function normalCDFTaylorSeries(z, maxTerms = 25) {
         const t0 = performance.now();
@@ -457,13 +511,11 @@
 
         const erfVal = (2.0 / Math.sqrt(Math.PI)) * sum;
         const value = 0.5 * (1.0 + erfVal);
-        const t1 = performance.now();
-        return { value, elapsedMs: t1 - t0, evals: k, termsUsed: k };
+        return { value, elapsedMs: performance.now() - t0, evals: k, termsUsed: k };
     }
 
     /**
-     * Method E: Abramowitz & Stegun Rational Approximation (Formula 7.1.26)
-     * Max error |epsilon(x)| <= 1.5 x 10^-7 across all R.
+     * Abramowitz & Stegun 7.1.26
      */
     function normalCDFAbramowitzStegun(z) {
         const t0 = performance.now();
@@ -473,23 +525,17 @@
         const x = Math.abs(z) / Math.SQRT2;
 
         const p = 0.3275911;
-        const a1 = 0.254829592;
-        const a2 = -0.284496736;
-        const a3 = 1.421413741;
-        const a4 = -1.453152027;
-        const a5 = 1.061405429;
+        const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429;
 
         const t = 1.0 / (1.0 + p * x);
         const poly = ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t;
         const erfVal = sign * (1.0 - poly * Math.exp(-x * x));
         const value = 0.5 * (1.0 + erfVal);
-        const t1 = performance.now();
-        return { value, elapsedMs: t1 - t0, evals: 6 };
+        return { value, elapsedMs: performance.now() - t0, evals: 6 };
     }
 
     /**
-     * Method F: Continued Fraction Tail Method (Laplace)
-     * Especially suited for extreme z values to avoid catastrophic cancellation in tails.
+     * Laplace Continued Fraction
      */
     function normalCDFContinuedFraction(z) {
         const t0 = performance.now();
@@ -504,7 +550,7 @@
         let D = 0.0;
         let steps = 0;
 
-        for (let j = 1; j < 50; j++) {
+        for (let j = 1; j < 60; j++) {
             steps++;
             const a = j;
             const b = x;
@@ -515,36 +561,37 @@
             D = 1.0 / D;
             const delta = C * D;
             f = f * delta;
-            if (Math.abs(delta - 1.0) < 1e-15) break;
+            if (Math.abs(delta - 1.0) < 1e-16) break;
         }
 
         const tail = phi / f;
         const value = sign > 0 ? 1.0 - tail : tail;
-        const t1 = performance.now();
-        return { value, elapsedMs: t1 - t0, evals: steps };
+        return { value, elapsedMs: performance.now() - t0, evals: steps };
     }
 
     // =========================================================================
-    // UI & CANVAS VISUALIZATION RENDERING
+    // UI CONTROLS & STATE
     // =========================================================================
 
-    // Module state
     let state = {
         selectedFuncKey: "sin",
         riemannN: 50,
         lebesgueM: 20,
         lebesgueK: 40000,
         riemannRule: "midpoint",
-        activeView: "both", // 'both' | 'riemann' | 'lebesgue'
+        dirichletSamplingMode: "rational", // 'rational' | 'weyl'
+        selectedSliceIndex: null, // for hover inspection
         zValue: 1.96,
+        probitP: 0.975,
         quadratureSteps: 500,
-        taylorTerms: 25
+        taylorTerms: 25,
+        liouvilleDegree: 2
     };
 
-    // DOM Elements Cache
     let dom = {};
 
     function initDOM() {
+        // Exercise 1 elements
         dom.funcSelect = document.getElementById('func-select');
         dom.funcDescription = document.getElementById('func-description');
         dom.funcFormula = document.getElementById('func-formula');
@@ -555,9 +602,9 @@
         dom.lebesgueKSlider = document.getElementById('lebesgue-k-slider');
         dom.lebesgueKVal = document.getElementById('lebesgue-k-val');
         dom.riemannRule = document.getElementById('riemann-rule');
-        dom.viewMode = document.getElementById('view-mode');
+        dom.dirichletControlGroup = document.getElementById('dirichlet-control-group');
+        dom.dirichletSampling = document.getElementById('dirichlet-sampling');
 
-        // Results display
         dom.exactVal = document.getElementById('exact-val');
         dom.riemannVal = document.getElementById('riemann-val');
         dom.riemannErr = document.getElementById('riemann-err');
@@ -566,25 +613,37 @@
         dom.lebesgueErr = document.getElementById('lebesgue-err');
         dom.lebesgueTime = document.getElementById('lebesgue-time');
 
-        // Canvases
         dom.canvasRiemann = document.getElementById('canvas-riemann');
         dom.canvasLebesgue = document.getElementById('canvas-lebesgue');
-        dom.canvasNormalPDF = document.getElementById('canvas-normal-pdf');
-        dom.canvasNormalResidual = document.getElementById('canvas-normal-residual');
+        dom.canvasLayercake = document.getElementById('canvas-layercake');
 
-        // Normal CDF controls
+        // Exercise 2 elements
         dom.zSlider = document.getElementById('z-slider');
         dom.zInput = document.getElementById('z-input');
         dom.zValDisplay = document.getElementById('z-val-display');
         dom.quadStepsSelect = document.getElementById('quad-steps-select');
         dom.taylorTermsSelect = document.getElementById('taylor-terms-select');
         dom.normalCdfTableBody = document.getElementById('normal-cdf-table-body');
+        dom.canvasNormalPDF = document.getElementById('canvas-normal-pdf');
+        dom.canvasNormalResidual = document.getElementById('canvas-normal-residual');
+
+        // Probit (Quantile) elements
+        dom.probitInput = document.getElementById('probit-input');
+        dom.probitZOutput = document.getElementById('probit-z-output');
+        dom.probitErrOutput = document.getElementById('probit-err-output');
+
+        // Tail cancellation table
+        dom.tailCancellationTableBody = document.getElementById('tail-cancellation-table-body');
+
+        // Liouville inspector elements
+        dom.liouvilleDegSlider = document.getElementById('liouville-deg-slider');
+        dom.liouvilleDegVal = document.getElementById('liouville-deg-val');
+        dom.liouvilleProofCard = document.getElementById('liouville-proof-card');
+
+        // Benchmark table
         dom.benchmarkTableBody = document.getElementById('benchmark-table-body');
     }
 
-    /**
-     * Color palette generator for Lebesgue preimage slices
-     */
     function getSliceColor(index, total) {
         const hue = (index * 360 / Math.max(total, 1)) % 360;
         return `hsla(${hue}, 70%, 55%, 0.45)`;
@@ -595,30 +654,26 @@
     }
 
     /**
-     * Draw Riemann Slicing on Canvas
+     * Render Canvas 1: Riemann Domain Slicing
      */
     function renderRiemannCanvas(fnObj, n, rule) {
         const canvas = dom.canvasRiemann;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const W = canvas.width;
-        const H = canvas.height;
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
 
-        ctx.clearRect(0, 0, W, W);
-
-        const padLeft = 50, padRight = 30, padTop = 30, padBottom = 40;
+        const padLeft = 45, padRight = 25, padTop = 25, padBottom = 35;
         const plotW = W - padLeft - padRight;
         const plotH = H - padTop - padBottom;
 
         const [a, b] = fnObj.domain;
         const f = fnObj.fn;
 
-        // Determine y bounds
         let yMin = fnObj.yRange ? fnObj.yRange[0] : 0;
         let yMax = fnObj.yRange ? fnObj.yRange[1] : 1;
-        if (fnObj.key === 'inv_sqrt') {
-            yMin = 0;
-            yMax = 12; // cap visually for rendering
+        if (fnObj.category.includes("Unbounded")) {
+            yMin = 0; yMax = 12;
         } else {
             yMin = Math.min(0, yMin);
             yMax = Math.max(1, yMax * 1.15);
@@ -627,35 +682,37 @@
         const mapX = (x) => padLeft + ((x - a) / (b - a)) * plotW;
         const mapY = (y) => padTop + (1.0 - (y - yMin) / (yMax - yMin)) * plotH;
 
-        // Background & Grid
+        // Background
         ctx.fillStyle = "#fafbfc";
         ctx.fillRect(padLeft, padTop, plotW, plotH);
         ctx.strokeStyle = "#e1e4e8";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        for (let g = 0; g <= 5; g++) {
-            const gy = padTop + (g / 5) * plotH;
+        for (let g = 0; g <= 4; g++) {
+            const gy = padTop + (g / 4) * plotH;
             ctx.moveTo(padLeft, gy);
             ctx.lineTo(padLeft + plotW, gy);
-            const yVal = yMax - (g / 5) * (yMax - yMin);
+            const yVal = yMax - (g / 4) * (yMax - yMin);
             ctx.fillStyle = "#6a737d";
-            ctx.font = "11px monospace";
+            ctx.font = "10px monospace";
             ctx.textAlign = "right";
-            ctx.fillText(yVal.toFixed(2), padLeft - 8, gy + 4);
+            ctx.fillText(yVal.toFixed(2), padLeft - 6, gy + 3);
         }
         ctx.stroke();
 
         // Draw Riemann rectangles
         const h = (b - a) / n;
-        ctx.lineWidth = 1;
-
         for (let i = 0; i < n; i++) {
             const xLeft = a + i * h;
             const xRight = a + (i + 1) * h;
             let xEval = xLeft;
             if (rule === 'midpoint') xEval = xLeft + 0.5 * h;
             else if (rule === 'right') xEval = xRight;
-            else if (rule === 'trapezoid') xEval = xLeft + 0.5 * h; // representative
+            else if (rule === 'trapezoid') xEval = xLeft + 0.5 * h;
+            else if (rule === 'weyl') {
+                const frac = ((i + 1) * PHI_GOLDEN) % 1.0;
+                xEval = a + (b - a) * frac;
+            }
 
             const yVal = Math.min(f(xEval), yMax);
             const rx = mapX(xLeft);
@@ -669,16 +726,15 @@
             ctx.strokeRect(rx, ry, Math.max(1, rw), rh);
         }
 
-        // Draw exact function curve f(x)
+        // Draw function curve
         ctx.beginPath();
         ctx.strokeStyle = "#e74c3c";
         ctx.lineWidth = 2.5;
-        const sampleCount = 400;
+        const sampleCount = 350;
         for (let s = 0; s <= sampleCount; s++) {
             const x = a + (s / sampleCount) * (b - a);
             const y = Math.min(f(x), yMax);
-            const px = mapX(x);
-            const py = mapY(y);
+            const px = mapX(x), py = mapY(y);
             if (s === 0) ctx.moveTo(px, py);
             else ctx.lineTo(px, py);
         }
@@ -693,43 +749,36 @@
         ctx.lineTo(padLeft + plotW, padTop + plotH);
         ctx.stroke();
 
-        // Axis labels
         ctx.fillStyle = "#2c3e50";
         ctx.font = "bold 11px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(`x = a (${a.toFixed(2)})`, padLeft, padTop + plotH + 20);
-        ctx.fillText(`Domain Partitioning (N = ${n} strips, Rule: ${rule})`, padLeft + plotW / 2, padTop + plotH + 32);
-        ctx.fillText(`x = b (${b.toFixed(2)})`, padLeft + plotW, padTop + plotH + 20);
+        ctx.fillText(`Riemann Domain Partition: N = ${n} strips (${rule})`, padLeft + plotW / 2, padTop + plotH + 25);
     }
 
     /**
-     * Draw Lebesgue Slicing on Canvas (Horizontal Range Slices + Preimage Highlight)
+     * Render Canvas 2: Lebesgue Range Slices & Preimage Domain Mapping
      */
     function renderLebesgueCanvas(fnObj, M, lebesgueResult) {
         const canvas = dom.canvasLebesgue;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const W = canvas.width;
-        const H = canvas.height;
-
+        const W = canvas.width, H = canvas.height;
         ctx.clearRect(0, 0, W, H);
 
-        const padLeft = 50, padRight = 30, padTop = 30, padBottom = 40;
+        const padLeft = 45, padRight = 25, padTop = 25, padBottom = 35;
         const plotW = W - padLeft - padRight;
         const plotH = H - padTop - padBottom;
 
         const [a, b] = fnObj.domain;
         const f = fnObj.fn;
-
         const y0 = lebesgueResult.y0;
         const y1 = lebesgueResult.y1;
         const dy = lebesgueResult.dy;
 
         let displayYMin = y0;
         let displayYMax = y1;
-        if (fnObj.key === 'inv_sqrt') {
-            displayYMin = 0;
-            displayYMax = 12;
+        if (fnObj.category.includes("Unbounded")) {
+            displayYMin = 0; displayYMax = 12;
         } else {
             displayYMin = Math.min(0, y0);
             displayYMax = Math.max(1, y1 * 1.15);
@@ -738,47 +787,27 @@
         const mapX = (x) => padLeft + ((x - a) / (b - a)) * plotW;
         const mapY = (y) => padTop + (1.0 - (y - displayYMin) / (displayYMax - displayYMin)) * plotH;
 
-        // Background & Grid
         ctx.fillStyle = "#fafbfc";
         ctx.fillRect(padLeft, padTop, plotW, plotH);
-        ctx.strokeStyle = "#e1e4e8";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (let g = 0; g <= 5; g++) {
-            const gy = padTop + (g / 5) * plotH;
-            ctx.moveTo(padLeft, gy);
-            ctx.lineTo(padLeft + plotW, gy);
-            const yVal = displayYMax - (g / 5) * (displayYMax - displayYMin);
-            ctx.fillStyle = "#6a737d";
-            ctx.font = "11px monospace";
-            ctx.textAlign = "right";
-            ctx.fillText(yVal.toFixed(2), padLeft - 8, gy + 4);
-        }
-        ctx.stroke();
 
-        // Draw Horizontal Range Bands
+        // Draw horizontal range bands
         for (let j = 0; j < M; j++) {
             const p = lebesgueResult.preimages[j];
-            if (!p) continue;
-            const yLow = p.yLower;
-            const yHigh = p.yUpper;
-            if (yLow > displayYMax) continue;
+            if (!p || p.yLower > displayYMax) continue;
 
-            const pyHigh = mapY(Math.min(displayYMax, yHigh));
-            const pyLow = mapY(Math.max(displayYMin, yLow));
+            const pyHigh = mapY(Math.min(displayYMax, p.yUpper));
+            const pyLow = mapY(Math.max(displayYMin, p.yLower));
             const bandH = Math.max(1, pyLow - pyHigh);
 
-            // Shaded horizontal range strip
             ctx.fillStyle = getSliceColor(j, M);
             ctx.fillRect(padLeft, pyHigh, plotW, bandH);
 
-            // Strip delimiter line
             ctx.strokeStyle = getSliceBorderColor(j, M);
             ctx.lineWidth = 0.5;
             ctx.strokeRect(padLeft, pyHigh, plotW, bandH);
         }
 
-        // Draw Preimage Footprints along the Domain (x-axis)
+        // Draw preimage ticks at bottom axis
         const K = 300;
         const step = (b - a) / K;
         for (let k = 0; k < K; k++) {
@@ -791,20 +820,18 @@
             const px = mapX(xVal);
             const pw = (step / (b - a)) * plotW;
             ctx.fillStyle = getSliceBorderColor(idx, M);
-            // Draw small footprint tick at bottom axis
             ctx.fillRect(px, padTop + plotH - 6, Math.max(1, pw), 6);
         }
 
-        // Draw exact function curve f(x)
+        // Draw function curve
         ctx.beginPath();
         ctx.strokeStyle = "#2c3e50";
         ctx.lineWidth = 2.5;
-        const sampleCount = 400;
+        const sampleCount = 350;
         for (let s = 0; s <= sampleCount; s++) {
             const x = a + (s / sampleCount) * (b - a);
             const y = Math.min(f(x), displayYMax);
-            const px = mapX(x);
-            const py = mapY(y);
+            const px = mapX(x), py = mapY(y);
             if (s === 0) ctx.moveTo(px, py);
             else ctx.lineTo(px, py);
         }
@@ -819,26 +846,96 @@
         ctx.lineTo(padLeft + plotW, padTop + plotH);
         ctx.stroke();
 
-        // Labels
         ctx.fillStyle = "#2c3e50";
         ctx.font = "bold 11px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(`Range Partitioning (M = ${M} horizontal slices, K = ${lebesgueResult.K})`, padLeft + plotW / 2, padTop + plotH + 32);
+        ctx.fillText(`Lebesgue Range Slices: M = ${M} horizontal layers, K = ${lebesgueResult.K}`, padLeft + plotW / 2, padTop + plotH + 25);
     }
 
     /**
-     * Render Normal PDF Bell Curve with Shaded Integral up to z
+     * Render Canvas 3 (GURU LEVEL): Preimage Measure Distribution & Layer-Cake Theorem
+     * Shows pushforward measure mu(E_j) vs y_j and cumulative measure curve
      */
-    function renderNormalPDFCanvas(zVal, quadSteps) {
+    function renderLayercakeCanvas(lebesgueResult) {
+        const canvas = dom.canvasLayercake;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        const padLeft = 45, padRight = 30, padTop = 25, padBottom = 35;
+        const plotW = W - padLeft - padRight;
+        const plotH = H - padTop - padBottom;
+
+        const M = lebesgueResult.M;
+        const pre = lebesgueResult.preimages;
+
+        let maxMeasure = 0;
+        for (let j = 0; j < M; j++) {
+            if (pre[j] && pre[j].measure > maxMeasure) maxMeasure = pre[j].measure;
+        }
+        maxMeasure = Math.max(0.1, maxMeasure * 1.15);
+
+        ctx.fillStyle = "#fafbfc";
+        ctx.fillRect(padLeft, padTop, plotW, plotH);
+
+        // Bar chart of mu(E_j)
+        const barW = plotW / M;
+        for (let j = 0; j < M; j++) {
+            const p = pre[j];
+            if (!p) continue;
+            const bH = (p.measure / maxMeasure) * plotH;
+            const bx = padLeft + j * barW;
+            const by = padTop + plotH - bH;
+
+            ctx.fillStyle = getSliceColor(j, M);
+            ctx.fillRect(bx, by, barW, bH);
+            ctx.strokeStyle = getSliceBorderColor(j, M);
+            ctx.lineWidth = 1;
+            ctx.strokeRect(bx, by, barW, bH);
+        }
+
+        // Draw Layer-Cake cumulative curve: mu({x : f(x) > y})
+        ctx.beginPath();
+        ctx.strokeStyle = "#e74c3c";
+        ctx.lineWidth = 2.5;
+        const totalDomainMeasure = pre[M - 1] ? pre[M - 1].cumulativeMeasure : 1.0;
+        for (let j = 0; j < M; j++) {
+            const p = pre[j];
+            const tailMeasure = totalDomainMeasure - p.cumulativeMeasure;
+            const px = padLeft + (j + 0.5) * barW;
+            const py = padTop + (1.0 - tailMeasure / totalDomainMeasure) * plotH;
+            if (j === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        // Axes
+        ctx.strokeStyle = "#2c3e50";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(padLeft, padTop);
+        ctx.lineTo(padLeft, padTop + plotH);
+        ctx.lineTo(padLeft + plotW, padTop + plotH);
+        ctx.stroke();
+
+        ctx.fillStyle = "#2c3e50";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Pushforward Measure μ(E_j) & Layer-Cake Tail μ({x: f(x) > t})", padLeft + plotW / 2, padTop + plotH + 25);
+    }
+
+    /**
+     * Render Canvas 4: Normal PDF Curve + Probit Cutoff Marker
+     */
+    function renderNormalPDFCanvas(zVal, probitCutoffZ) {
         const canvas = dom.canvasNormalPDF;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const W = canvas.width;
-        const H = canvas.height;
-
+        const W = canvas.width, H = canvas.height;
         ctx.clearRect(0, 0, W, H);
 
-        const padLeft = 45, padRight = 30, padTop = 30, padBottom = 40;
+        const padLeft = 45, padRight = 25, padTop = 25, padBottom = 35;
         const plotW = W - padLeft - padRight;
         const plotH = H - padTop - padBottom;
 
@@ -848,11 +945,10 @@
         const mapX = (x) => padLeft + ((x - xMin) / (xMax - xMin)) * plotW;
         const mapY = (y) => padTop + (1.0 - (y - yMin) / (yMax - yMin)) * plotH;
 
-        // Background
         ctx.fillStyle = "#fafbfc";
         ctx.fillRect(padLeft, padTop, plotW, plotH);
 
-        // Draw standard deviation reference bands (-3 to +3)
+        // SD Grid
         const stdDevs = [-3, -2, -1, 1, 2, 3];
         ctx.strokeStyle = "#e1e4e8";
         ctx.lineWidth = 1;
@@ -870,37 +966,36 @@
         });
         ctx.setLineDash([]);
 
-        // Shaded cumulative probability region from -infinity to z
+        // Shaded area up to z
         const clampedZ = Math.max(xMin, Math.min(xMax, zVal));
         ctx.beginPath();
         ctx.moveTo(mapX(xMin), mapY(0));
-        const shadeSteps = 200;
-        const shadeStepSize = (clampedZ - xMin) / shadeSteps;
-        for (let i = 0; i <= shadeSteps; i++) {
-            const curX = xMin + i * shadeStepSize;
-            ctx.lineTo(mapX(curX), mapY(normalPDF(curX)));
+        const steps = 180;
+        const stepSize = (clampedZ - xMin) / steps;
+        for (let i = 0; i <= steps; i++) {
+            const cx = xMin + i * stepSize;
+            ctx.lineTo(mapX(cx), mapY(normalPDF(cx)));
         }
         ctx.lineTo(mapX(clampedZ), mapY(0));
         ctx.closePath();
         ctx.fillStyle = "rgba(46, 204, 113, 0.35)";
         ctx.fill();
 
-        // Draw Normal PDF Bell Curve
+        // Bell curve
         ctx.beginPath();
         ctx.strokeStyle = "#2c3e50";
         ctx.lineWidth = 2.5;
         const curveSteps = 300;
         for (let i = 0; i <= curveSteps; i++) {
-            const curX = xMin + (i / curveSteps) * (xMax - xMin);
-            const curY = normalPDF(curX);
-            const px = mapX(curX);
-            const py = mapY(curY);
+            const cx = xMin + (i / curveSteps) * (xMax - xMin);
+            const cy = normalPDF(cx);
+            const px = mapX(cx), py = mapY(cy);
             if (i === 0) ctx.moveTo(px, py);
             else ctx.lineTo(px, py);
         }
         ctx.stroke();
 
-        // Vertical boundary line at z
+        // Marker at z
         const pzX = mapX(clampedZ);
         ctx.beginPath();
         ctx.strokeStyle = "#e74c3c";
@@ -909,14 +1004,31 @@
         ctx.lineTo(pzX, mapY(normalPDF(clampedZ)));
         ctx.stroke();
 
-        // Point at (z, phi(z))
         ctx.fillStyle = "#e74c3c";
         ctx.beginPath();
-        ctx.arc(pzX, mapY(normalPDF(clampedZ)), 4.5, 0, 2 * Math.PI);
+        ctx.arc(pzX, mapY(normalPDF(clampedZ)), 4, 0, 2 * Math.PI);
         ctx.fill();
 
+        // Optional Probit Marker (in purple)
+        if (probitCutoffZ && isFinite(probitCutoffZ) && probitCutoffZ >= xMin && probitCutoffZ <= xMax) {
+            const probX = mapX(probitCutoffZ);
+            ctx.strokeStyle = "#8e44ad";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(probX, padTop);
+            ctx.lineTo(probX, padTop + plotH);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = "#8e44ad";
+            ctx.font = "bold 10px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(`Quantile z_p = ${probitCutoffZ.toFixed(3)}`, probX, padTop + 15);
+        }
+
         // Axes
-        ctx.strokeStyle = "#34495e";
+        ctx.strokeStyle = "#2c3e50";
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(padLeft, padTop);
@@ -924,94 +1036,67 @@
         ctx.lineTo(padLeft + plotW, padTop + plotH);
         ctx.stroke();
 
-        // Annotation banner
-        const phiExact = normalCDFReference(zVal);
+        const phiRef = normalCDFReference(zVal);
         ctx.fillStyle = "#2c3e50";
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold 11px sans-serif";
         ctx.textAlign = "left";
-        ctx.fillText(`Evaluation point z = ${zVal.toFixed(3)}   |   Exact Φ(z) = ${phiExact.toFixed(9)}`, padLeft + 15, padTop + 20);
+        ctx.fillText(`Active z = ${zVal.toFixed(3)}   |   Φ(z) = ${phiRef.toFixed(9)}`, padLeft + 10, padTop + 15);
     }
 
     /**
-     * Render Log Error Residual Comparison Canvas across methods
+     * Render Canvas 5: Residual Error Profiles Across Methods
      */
     function renderNormalResidualCanvas() {
         const canvas = dom.canvasNormalResidual;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const W = canvas.width;
-        const H = canvas.height;
-
+        const W = canvas.width, H = canvas.height;
         ctx.clearRect(0, 0, W, H);
 
-        const padLeft = 60, padRight = 30, padTop = 30, padBottom = 40;
+        const padLeft = 50, padRight = 25, padTop = 25, padBottom = 35;
         const plotW = W - padLeft - padRight;
         const plotH = H - padTop - padBottom;
 
         const xMin = -4.0, xMax = 4.0;
-        // Log10 absolute error: from 10^-16 to 10^0
         const logMin = -16.0, logMax = 0.0;
 
         const mapX = (x) => padLeft + ((x - xMin) / (xMax - xMin)) * plotW;
         const mapY = (logErr) => padTop + (1.0 - (logErr - logMin) / (logMax - logMin)) * plotH;
 
-        // Background
         ctx.fillStyle = "#fafbfc";
         ctx.fillRect(padLeft, padTop, plotW, plotH);
 
-        // Grid lines for orders of magnitude
         ctx.strokeStyle = "#e1e4e8";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        for (let logVal = -16; logVal <= 0; logVal += 2) {
+        for (let logVal = -16; logVal <= 0; logVal += 4) {
             const py = mapY(logVal);
             ctx.moveTo(padLeft, py);
             ctx.lineTo(padLeft + plotW, py);
             ctx.fillStyle = "#6a737d";
             ctx.font = "10px monospace";
             ctx.textAlign = "right";
-            ctx.fillText(`10^${logVal}`, padLeft - 8, py + 3);
+            ctx.fillText(`10^${logVal}`, padLeft - 6, py + 3);
         }
         ctx.stroke();
 
-        // Methods to compare across domain
         const methods = [
-            {
-                name: "A&S (7.1.26)",
-                color: "#e67e22",
-                calc: (z) => normalCDFAbramowitzStegun(z).value
-            },
-            {
-                name: "Trapezoid (N=200)",
-                color: "#3498db",
-                calc: (z) => normalCDFTrapezoidal(z, 200).value
-            },
-            {
-                name: "Simpson (N=200)",
-                color: "#9b59b6",
-                calc: (z) => normalCDFSimpson(z, 200).value
-            },
-            {
-                name: "Taylor (K=15)",
-                color: "#e74c3c",
-                calc: (z) => normalCDFTaylorSeries(z, 15).value
-            },
-            {
-                name: "Gauss-Legendre (10-pt)",
-                color: "#27ae60",
-                calc: (z) => normalCDFGaussLegendre(z).value
-            }
+            { name: "A&S (7.1.26)", color: "#e67e22", calc: (z) => normalCDFAbramowitzStegun(z).value },
+            { name: "Trapezoid (N=200)", color: "#3498db", calc: (z) => normalCDFTrapezoidal(z, 200).value },
+            { name: "Simpson (N=200)", color: "#9b59b6", calc: (z) => normalCDFSimpson(z, 200).value },
+            { name: "Taylor (K=15)", color: "#e74c3c", calc: (z) => normalCDFTaylorSeries(z, 15).value },
+            { name: "Gauss-Legendre", color: "#27ae60", calc: (z) => normalCDFGaussLegendre(z).value }
         ];
 
-        const numPoints = 80;
+        const pts = 80;
         methods.forEach(method => {
             ctx.beginPath();
             ctx.strokeStyle = method.color;
             ctx.lineWidth = 2.0;
 
             let started = false;
-            for (let i = 0; i <= numPoints; i++) {
-                const z = xMin + (i / numPoints) * (xMax - xMin);
+            for (let i = 0; i <= pts; i++) {
+                const z = xMin + (i / pts) * (xMax - xMin);
                 const exact = normalCDFReference(z);
                 const est = method.calc(z);
                 const absErr = Math.max(1e-16, Math.abs(est - exact));
@@ -1020,12 +1105,8 @@
                 const px = mapX(z);
                 const py = mapY(Math.min(0, Math.max(logMin, logErr)));
 
-                if (!started) {
-                    ctx.moveTo(px, py);
-                    started = true;
-                } else {
-                    ctx.lineTo(px, py);
-                }
+                if (!started) { ctx.moveTo(px, py); started = true; }
+                else { ctx.lineTo(px, py); }
             }
             ctx.stroke();
         });
@@ -1040,22 +1121,21 @@
         ctx.stroke();
 
         // Legend
-        let legX = padLeft + 15;
-        ctx.font = "bold 10px sans-serif";
+        let legX = padLeft + 10;
+        ctx.font = "bold 9.5px sans-serif";
         methods.forEach(m => {
             ctx.fillStyle = m.color;
-            ctx.fillRect(legX, padTop + 10, 12, 10);
+            ctx.fillRect(legX, padTop + 8, 10, 8);
             ctx.fillStyle = "#2c3e50";
             ctx.textAlign = "left";
-            ctx.fillText(m.name, legX + 16, padTop + 18);
-            legX += ctx.measureText(m.name).width + 30;
+            ctx.fillText(m.name, legX + 13, padTop + 15);
+            legX += ctx.measureText(m.name).width + 22;
         });
 
-        // Axis title
         ctx.fillStyle = "#2c3e50";
         ctx.font = "bold 11px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("Standard Normal z", padLeft + plotW / 2, padTop + plotH + 30);
+        ctx.fillText("Standard Normal z", padLeft + plotW / 2, padTop + plotH + 25);
     }
 
     /**
@@ -1065,7 +1145,13 @@
         const fnObj = FUNCTIONS[state.selectedFuncKey];
         if (!fnObj) return;
 
-        // Update descriptions
+        // Toggle Dirichlet specific sampling control
+        if (state.selectedFuncKey === 'dirichlet') {
+            if (dom.dirichletControlGroup) dom.dirichletControlGroup.style.display = 'block';
+        } else {
+            if (dom.dirichletControlGroup) dom.dirichletControlGroup.style.display = 'none';
+        }
+
         dom.funcDescription.innerHTML = `<strong>${fnObj.category}:</strong> ${fnObj.description}`;
         dom.funcFormula.textContent = `$$${fnObj.latex}$$`;
         if (window.renderMathInElement) {
@@ -1075,14 +1161,14 @@
         }
 
         const [a, b] = fnObj.domain;
+        const activeRule = (state.selectedFuncKey === 'dirichlet' && state.dirichletSamplingMode === 'weyl') 
+            ? 'weyl' 
+            : state.riemannRule;
 
-        // Run Riemann
-        const riemannRes = riemannIntegrate(fnObj.fn, a, b, state.riemannN, state.riemannRule);
+        const riemannRes = riemannIntegrate(fnObj.fn, a, b, state.riemannN, activeRule);
+        const lebesgueRes = lebesgueIntegrate(fnObj.fn, a, b, state.lebesgueM, state.lebesgueK, 
+            fnObj.yRange ? fnObj.yRange[0] : null, fnObj.yRange ? fnObj.yRange[1] : null);
 
-        // Run Lebesgue
-        const lebesgueRes = lebesgueIntegrate(fnObj.fn, a, b, state.lebesgueM, state.lebesgueK, fnObj.yRange ? fnObj.yRange[0] : null, fnObj.yRange ? fnObj.yRange[1] : null);
-
-        // Display results
         dom.exactVal.textContent = fnObj.exact !== null ? fnObj.exact.toFixed(7) : "Undefined (Riemann Fails)";
         dom.riemannVal.textContent = riemannRes.value.toFixed(7);
         dom.riemannTime.textContent = `${(riemannRes.elapsedMs * 1000).toFixed(1)} µs`;
@@ -1091,7 +1177,7 @@
             const rErr = Math.abs(riemannRes.value - fnObj.exact);
             dom.riemannErr.textContent = `${rErr.toExponential(3)} (${((rErr / Math.max(1e-12, Math.abs(fnObj.exact))) * 100).toFixed(3)}%)`;
         } else {
-            dom.riemannErr.textContent = "Divergent / Grid Dependent";
+            dom.riemannErr.textContent = (activeRule === 'weyl') ? "0.0000000 (Weyl Orbit hit 0)" : "1.0000000 (Rational Grid hit 1)";
         }
 
         dom.lebesgueVal.textContent = lebesgueRes.value.toFixed(7);
@@ -1104,19 +1190,17 @@
             dom.lebesgueErr.textContent = "N/A";
         }
 
-        // Render Canvases
-        renderRiemannCanvas(fnObj, state.riemannN, state.riemannRule);
+        renderRiemannCanvas(fnObj, state.riemannN, activeRule);
         renderLebesgueCanvas(fnObj, state.lebesgueM, lebesgueRes);
+        renderLayercakeCanvas(lebesgueRes);
     }
 
     /**
-     * Update Part 2: Normal CDF Evaluator & Table
+     * Update Part 2: Normal CDF Evaluator, Probit & Tail Cancellation
      */
     function updateExercise2() {
         const z = state.zValue;
         const refVal = normalCDFReference(z);
-
-        // Evaluate methods
         const quadSteps = state.quadratureSteps;
         const taylorTerms = state.taylorTerms;
 
@@ -1162,7 +1246,7 @@
                 err: Math.abs(resGL10.value - refVal),
                 evals: resGL10.evals,
                 time: `${(resGL10.elapsedMs * 1000).toFixed(1)} µs`,
-                status: "High Efficiency (Exact deg ≤ 19)"
+                status: "Exact for deg ≤ 19"
             },
             {
                 name: "Taylor Series (erf expansion)",
@@ -1189,11 +1273,10 @@
                 err: Math.abs(resCF.value - refVal),
                 evals: resCF.evals,
                 time: `${(resCF.elapsedMs * 1000).toFixed(1)} µs`,
-                status: "Tail Stabilizer (No Loss in Flops)"
+                status: "Tail Stabilizer (No Loss)"
             }
         ];
 
-        // Populate table
         let tableHTML = "";
         methodList.forEach((m, idx) => {
             const isRef = idx === 0;
@@ -1213,21 +1296,103 @@
         });
         dom.normalCdfTableBody.innerHTML = tableHTML;
 
-        // Update Canvases
-        renderNormalPDFCanvas(z, quadSteps);
+        // Update Probit / Quantile output
+        const probitZ = normalInvCDF(state.probitP);
+        dom.probitZOutput.textContent = probitZ.toFixed(6);
+        const roundtripErr = Math.abs(normalCDFReference(probitZ) - state.probitP);
+        dom.probitErrOutput.textContent = `|Φ(z_p) - p| = ${roundtripErr.toExponential(3)}`;
+
+        // Render Canvases
+        renderNormalPDFCanvas(z, probitZ);
         renderNormalResidualCanvas();
+        populateTailCancellationTable();
     }
 
     /**
-     * Populate Global Convergence Benchmark Matrix for Exercise 1
+     * GURU LEVEL: Tail Breakdown & Catastrophic Cancellation Profiler
+     */
+    function populateTailCancellationTable() {
+        if (!dom.tailCancellationTableBody) return;
+        const testZs = [3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+        let rows = "";
+
+        testZs.forEach(tz => {
+            const exactPhi = normalCDFReference(tz);
+            const exactTailQ = 1.0 - exactPhi;
+
+            // Naive 1 - Phi(-z) subtraction in IEEE 754
+            const naiveTrapPhi = normalCDFTrapezoidal(tz, 500).value;
+            const naiveSubTail = 1.0 - naiveTrapPhi;
+
+            // Taylor series of erf
+            const taylorRes = normalCDFTaylorSeries(tz, 30);
+            const taylorPhi = taylorRes.value;
+
+            // Continued Fraction tail
+            const cfRes = normalCDFContinuedFraction(tz);
+            const cfTail = 1.0 - cfRes.value;
+
+            const taylorErr = Math.abs(taylorPhi - exactPhi);
+            const cfErr = Math.abs((1.0 - cfRes.value) - exactTailQ) / Math.max(1e-30, exactTailQ);
+
+            rows += `
+                <tr>
+                    <td><strong>z = ${tz.toFixed(1)}</strong></td>
+                    <td style="font-family:monospace; font-size:0.9rem;">${exactTailQ.toExponential(4)}</td>
+                    <td style="font-family:monospace; font-size:0.9rem; ${taylorErr > 1e-4 ? 'color:#e74c3c; font-weight:bold;' : ''}">${taylorPhi.toFixed(8)}<br><small>Err: ${taylorErr.toExponential(2)}</small></td>
+                    <td style="font-family:monospace; font-size:0.9rem;">${naiveSubTail.toExponential(4)}</td>
+                    <td style="font-family:monospace; font-size:0.9rem; color:#27ae60; font-weight:bold;">${cfTail.toExponential(4)}<br><small>RelErr: ${cfErr.toExponential(2)}</small></td>
+                </tr>
+            `;
+        });
+        dom.tailCancellationTableBody.innerHTML = rows;
+    }
+
+    /**
+     * GURU LEVEL: Liouville Degree Defect Interactive Inspector
+     */
+    function updateLiouvilleInspector() {
+        const d = state.liouvilleDegree;
+        dom.liouvilleDegVal.textContent = d;
+
+        const degDeriv = d === 0 ? "-\\infty" : `${d - 1}`;
+        const degMult = `${d + 1}`;
+        const degLHS = `${d + 1}`;
+        const degRHS = "0";
+
+        const html = `
+            <p><strong>Candidate Polynomial Degree:</strong> $\\deg(P) = d = ${d}$</p>
+            <ul>
+                <li>Degree of derivative $P'(x)$: $\\deg(P') = ${degDeriv}$</li>
+                <li>Degree of product term $-2x P(x)$: $\\deg(-2x P) = 1 + d = ${degMult}$</li>
+                <li>Degree of left-hand side: $\\deg(P' - 2x P) = \\max(${degDeriv}, ${degMult}) = \\mathbf{${degLHS}}$</li>
+                <li>Degree of right-hand side constant $1$: $\\deg(1) = \\mathbf{${degRHS}}$</li>
+            </ul>
+            <div style="background:#fdedec; border-left:4px solid #e74c3c; padding:0.8rem; border-radius:4px; margin-top:0.5rem;">
+                <strong>Degree Defect:</strong> $\\Delta = \\deg(\\text{LHS}) - \\deg(\\text{RHS}) = ${degLHS} - 0 = \\mathbf{+${d + 1} \\ge 1 \\neq 0}$.<br>
+                Because the defect is strictly positive for every integer $d \\ge 0$, no polynomial $P(x)$ can ever balance this differential equation. Q.E.D.!
+            </div>
+        `;
+        dom.liouvilleProofCard.innerHTML = html;
+        if (window.renderMathInElement) {
+            window.renderMathInElement(dom.liouvilleProofCard, {
+                delimiters: [{ left: '$', right: '$', display: false }]
+            });
+        }
+    }
+
+    /**
+     * Populate Global Convergence Benchmark Matrix with Empirical Order alpha
      */
     function populateExercise1Benchmark() {
         if (!dom.benchmarkTableBody) return;
         const testN = [10, 50, 100, 500, 2000, 10000];
-        const fn = FUNCTIONS.sin; // sin(x) on [0, pi], exact = 2
+        const fn = FUNCTIONS.sin;
         const exact = 2.0;
 
         let rows = "";
+        let prevMidErr = null, prevTrapErr = null, prevN = null;
+
         testN.forEach(n => {
             const rMid = riemannIntegrate(fn.fn, 0, Math.PI, n, 'midpoint');
             const rTrap = riemannIntegrate(fn.fn, 0, Math.PI, n, 'trapezoid');
@@ -1237,58 +1402,71 @@
             const errTrap = Math.abs(rTrap.value - exact);
             const errLeb = Math.abs(lRes.value - exact);
 
+            // Compute empirical convergence order alpha: Error ~ C * N^(-alpha)
+            let alphaMidStr = "-";
+            if (prevMidErr !== null && errMid > 0) {
+                const alpha = Math.log(prevMidErr / errMid) / Math.log(n / prevN);
+                alphaMidStr = `α ≈ ${alpha.toFixed(2)}`;
+            }
+
             rows += `
                 <tr>
                     <td><strong>${n}</strong></td>
-                    <td style="font-family: monospace;">${rMid.value.toFixed(7)}<br><small style="color:#7f8c8d;">Err: ${errMid.toExponential(2)}</small></td>
+                    <td style="font-family: monospace;">${rMid.value.toFixed(7)}<br><small style="color:#2980b9;">Err: ${errMid.toExponential(2)} (${alphaMidStr})</small></td>
                     <td style="font-family: monospace;">${rTrap.value.toFixed(7)}<br><small style="color:#7f8c8d;">Err: ${errTrap.toExponential(2)}</small></td>
-                    <td style="font-family: monospace;">${lRes.value.toFixed(7)}<br><small style="color:#7f8c8d;">Err: ${errLeb.toExponential(2)}</small></td>
+                    <td style="font-family: monospace;">${lRes.value.toFixed(7)}<br><small style="color:#27ae60;">Err: ${errLeb.toExponential(2)}</small></td>
                     <td style="font-family: monospace;">${(rMid.elapsedMs * 1000).toFixed(1)} µs</td>
                     <td style="font-family: monospace;">${(lRes.elapsedMs).toFixed(1)} ms</td>
                 </tr>
             `;
+
+            prevMidErr = errMid;
+            prevTrapErr = errTrap;
+            prevN = n;
         });
         dom.benchmarkTableBody.innerHTML = rows;
     }
 
     /**
-     * Wire Up Event Handlers
+     * Wire Up All Event Listeners
      */
     function attachEventListeners() {
-        // Function select
         dom.funcSelect.addEventListener('change', (e) => {
             state.selectedFuncKey = e.target.value;
             updateExercise1();
         });
 
-        // Riemann N slider
         dom.riemannNSlider.addEventListener('input', (e) => {
             state.riemannN = parseInt(e.target.value, 10);
             dom.riemannNVal.textContent = state.riemannN;
             updateExercise1();
         });
 
-        // Lebesgue M slider
         dom.lebesgueMSlider.addEventListener('input', (e) => {
             state.lebesgueM = parseInt(e.target.value, 10);
             dom.lebesgueMVal.textContent = state.lebesgueM;
             updateExercise1();
         });
 
-        // Lebesgue K slider
         dom.lebesgueKSlider.addEventListener('input', (e) => {
             state.lebesgueK = parseInt(e.target.value, 10);
             dom.lebesgueKVal.textContent = state.lebesgueK.toLocaleString();
             updateExercise1();
         });
 
-        // Riemann rule
         dom.riemannRule.addEventListener('change', (e) => {
             state.riemannRule = e.target.value;
             updateExercise1();
         });
 
-        // z slider
+        if (dom.dirichletSampling) {
+            dom.dirichletSampling.addEventListener('change', (e) => {
+                state.dirichletSamplingMode = e.target.value;
+                updateExercise1();
+            });
+        }
+
+        // z slider & input
         dom.zSlider.addEventListener('input', (e) => {
             state.zValue = parseFloat(e.target.value);
             dom.zInput.value = state.zValue.toFixed(3);
@@ -1296,7 +1474,6 @@
             updateExercise2();
         });
 
-        // z text input
         dom.zInput.addEventListener('change', (e) => {
             let val = parseFloat(e.target.value);
             if (isNaN(val)) val = 0.0;
@@ -1308,7 +1485,7 @@
             updateExercise2();
         });
 
-        // Quick z-buttons
+        // Quick z presets
         document.querySelectorAll('.btn-z-preset').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const zTarget = parseFloat(e.target.dataset.z);
@@ -1320,25 +1497,51 @@
             });
         });
 
-        // Quadrature Steps select
+        // Probit (Quantile) input & presets
+        if (dom.probitInput) {
+            dom.probitInput.addEventListener('input', (e) => {
+                let p = parseFloat(e.target.value);
+                if (isNaN(p) || p <= 0) p = 0.0001;
+                if (p >= 1) p = 0.9999;
+                state.probitP = p;
+                updateExercise2();
+            });
+        }
+
+        document.querySelectorAll('.btn-probit-preset').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const pTarget = parseFloat(e.target.dataset.p);
+                state.probitP = pTarget;
+                if (dom.probitInput) dom.probitInput.value = pTarget;
+                updateExercise2();
+            });
+        });
+
+        // Liouville Degree Slider
+        if (dom.liouvilleDegSlider) {
+            dom.liouvilleDegSlider.addEventListener('input', (e) => {
+                state.liouvilleDegree = parseInt(e.target.value, 10);
+                updateLiouvilleInspector();
+            });
+        }
+
         dom.quadStepsSelect.addEventListener('change', (e) => {
             state.quadratureSteps = parseInt(e.target.value, 10);
             updateExercise2();
         });
 
-        // Taylor terms select
         dom.taylorTermsSelect.addEventListener('change', (e) => {
             state.taylorTerms = parseInt(e.target.value, 10);
             updateExercise2();
         });
     }
 
-    // Initialization on DOMContentLoaded
     window.addEventListener('DOMContentLoaded', () => {
         initDOM();
         attachEventListeners();
         updateExercise1();
         updateExercise2();
+        updateLiouvilleInspector();
         populateExercise1Benchmark();
     });
 

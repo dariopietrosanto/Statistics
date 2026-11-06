@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Homework 6: Riemann vs Lebesgue Integration & Numerical Normal CDF (Guru Level)</title>
+    <title>Homework 6: Riemann vs Lebesgue Integration & Numerical Normal CDF</title>
     <link rel="stylesheet" href="../style.css">
     <!-- KaTeX for high-fidelity scientific formula rendering -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
@@ -32,15 +32,11 @@
         .metric-val { font-size: 1.25rem; font-weight: bold; color: #2c3e50; margin-top: 0.3rem; font-family: monospace; }
         .code-box { background: #2c3e50; color: #ecf0f1; padding: 1.2rem; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.92rem; line-height: 1.5; overflow-x: auto; }
         .math-box { text-align: center; margin: 1.2rem 0; font-size: 1.05rem; background: #ffffff; padding: 1rem; border: 1px solid #e1e8ed; border-radius: 4px; }
-        .guru-badge { background: linear-gradient(135deg, #8e44ad, #2980b9); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; margin-left: 0.8rem; display: inline-block; }
     </style>
 </head>
 <body>
     <header>
-        <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap;">
-            <h1 style="margin:0;">Homework 6: Riemann vs Lebesgue Integration & The Normal CDF</h1>
-            <span class="guru-badge">Guru Level Edition</span>
-        </div>
+        <h1>Homework 6: Riemann vs Lebesgue Integration & The Normal CDF</h1>
         <p>Measure Theory in Numerical Quadrature, Non-Elementary Antiderivatives, Liouville's Theorem & High-Precision Gaussian Computation</p>
         <p style="margin-top: 0.5rem; font-size: 1rem; color: #ecf0f1;"><strong>Student:</strong> Dario Pietrosanto (2055042) &nbsp;|&nbsp; Master's Degree Course in Applied Statistics & Cybersecurity</p>
     </header>
@@ -49,8 +45,8 @@
         <a href="../index.html" style="display:inline-block; margin-bottom: 1.5rem; color: #3498db; text-decoration: none; font-weight: bold;">&larr; Back to Dashboard</a>
 
         <!-- EXECUTIVE SUMMARY -->
-        <section class="panel" style="background:#fcfcfc; border-left: 4px solid #8e44ad; margin-bottom: 2rem;">
-            <h2 style="margin-top:0; border:none; padding:0;">Executive Summary & Research Directives (Guru Level)</h2>
+        <section class="panel" style="background:#fcfcfc; border-left: 4px solid #3498db; margin-bottom: 2rem;">
+            <h2 style="margin-top:0; border:none; padding:0;">Executive Summary & Research Directives</h2>
             <p>
                 In modern scientific computing, statistics, and cryptographic engineering, integration embodies two fundamentally different paradigms: 
                 <strong>geometric quadrature</strong> (numerical approximations of areas under curves) and <strong>measure-theoretic expectation</strong> ($\mathbb{E}[X] = \int_\Omega X \, d\mathbb{P}$).
@@ -133,7 +129,7 @@
                         </select>
                     </div>
 
-                    <!-- GURU LEVEL: Dirichlet Grid Sampling Selector -->
+                    <!-- Dirichlet Grid Sampling Selector -->
                     <div id="dirichlet-control-group" class="control-group" style="display:none; background:#fdedec; border:1px solid #e74c3c; padding:0.8rem; border-radius:4px;">
                         <label for="dirichlet-sampling" style="color:#c0392b;">Dirichlet Probe Lattice Mode:</label>
                         <select id="dirichlet-sampling">
@@ -293,7 +289,7 @@
                 </p>
             </div>
 
-            <!-- GURU LEVEL: Interactive Liouville Degree Defect Inspector -->
+            <!-- Interactive Liouville Degree Defect Inspector -->
             <div class="panel" style="background:#fcfcfc; border:1px solid #dce4ec; margin: 1.5rem 0;">
                 <h4 style="margin-top:0; color:#2c3e50;">Interactive Liouville Degree Defect Inspector</h4>
                 <div class="control-group" style="max-width:400px;">
@@ -344,7 +340,7 @@
                 </div>
 
                 <div>
-                    <!-- GURU LEVEL: PROBIT CALCULATOR -->
+                    <!-- PROBIT CALCULATOR -->
                     <div style="background:#f8f9fa; border:1px solid #bdc3c7; padding:1rem; border-radius:4px; margin-bottom:1rem;">
                         <h4 style="margin-top:0; color:#8e44ad;">Inverse Normal CDF / Probit Calculator ($z_p = \Phi^{-1}(p)$)</h4>
                         <div class="control-group" style="margin-bottom:0.5rem;">
@@ -420,7 +416,7 @@
                 </div>
             </div>
 
-            <!-- GURU LEVEL: TAIL BREAKDOWN & CATASTROPHIC CANCELLATION PROFILER -->
+            <!-- TAIL BREAKDOWN & CATASTROPHIC CANCELLATION PROFILER -->
             <h3 style="margin-top: 2rem; color:#c0392b;">Catastrophic Cancellation & Tail Breakdown Profiler for Extreme Deviations</h3>
             <p style="font-size:0.95rem; color:#7f8c8d;">
                 When evaluating the upper tail probability $Q(z) = 1 - \Phi(z) = \frac{1}{\sqrt{2\pi}}\int_z^\infty e^{-t^2/2} dt$ for $z \ge 3.0$, naive subtraction $1.0 - \hat{\Phi}(z)$ suffers catastrophic loss of significance in 64-bit IEEE 754 arithmetic. 

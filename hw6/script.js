@@ -2,7 +2,7 @@
  * Homework 6: Numerical Integration (Riemann vs Lebesgue) & Normal CDF Computation
  * Author: Dario Pietrosanto (Matricola: 2055042)
  * Master's Degree Course in Applied Statistics & Cybersecurity
- * GURU LEVEL EDITION:
+ * Advanced Analytical & Computational Framework:
  * - Pushforward Preimage Measure Distribution & Layer-Cake Theorem Canvas
  * - Dirichlet Lattice Paradox: Rational Uniform Grid vs. Weyl Irrational Equidistributed Orbit
  * - Liouville Degree Defect & Differential Algebra Inspector
@@ -853,7 +853,7 @@
     }
 
     /**
-     * Render Canvas 3 (GURU LEVEL): Preimage Measure Distribution & Layer-Cake Theorem
+     * Canvas 3: Preimage Measure Distribution & Layer-Cake Theorem
      * Shows pushforward measure mu(E_j) vs y_j and cumulative measure curve
      */
     function renderLayercakeCanvas(lebesgueResult) {
@@ -1309,7 +1309,7 @@
     }
 
     /**
-     * GURU LEVEL: Tail Breakdown & Catastrophic Cancellation Profiler
+     * Tail Breakdown & Catastrophic Cancellation Profiler
      */
     function populateTailCancellationTable() {
         if (!dom.tailCancellationTableBody) return;
@@ -1349,7 +1349,7 @@
     }
 
     /**
-     * GURU LEVEL: Liouville Degree Defect Interactive Inspector
+     * Liouville Degree Defect Interactive Inspector
      */
     function updateLiouvilleInspector() {
         const d = state.liouvilleDegree;

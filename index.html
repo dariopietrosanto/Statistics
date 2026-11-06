@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cryptography & Statistics Portfolio - Dario Pietrosanto</title>
     <link rel="stylesheet" href="style.css">
+    <!-- KaTeX for formula rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]});"></script>
 </head>
 <body>
     <header>
@@ -47,12 +51,19 @@
             </a>
 
             <!-- Homework 5 -->
-            <a href="hw5/index.html" class="hw-card" style="border-color: #3498db; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.15);">
+            <a href="hw5/index.html" class="hw-card">
+                <h3>Homework 5</h3>
+                <p><strong>Topic:</strong> Welford’s Recurrence Formulas, Online Sample Mean & Variance. 3-line streaming algorithm, catastrophic cancellation avoidance, multi-hacker penetration simulation on $[0, 10]$ scores, Bessel's correction proof, and $O(1/n)$ estimator variability decay in inferential statistics.</p>
+                <span class="status completed">Completed</span>
+            </a>
+
+            <!-- Homework 6 -->
+            <a href="hw6/index.html" class="hw-card" style="border-color: #3498db; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.15);">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h3 style="margin:0;">Homework 5</h3>
+                    <h3 style="margin:0;">Homework 6</h3>
                     <span style="background:#27ae60; color:white; font-size:0.75rem; padding:2px 8px; border-radius:10px; font-weight:bold;">NEW</span>
                 </div>
-                <p style="margin-top:0.8rem;"><strong>Topic:</strong> Welford’s Recurrence Formulas, Online Sample Mean & Variance. 3-line streaming algorithm, catastrophic cancellation avoidance, multi-hacker penetration simulation on $[0, 10]$ scores, Bessel's correction proof, and $O(1/n)$ estimator variability decay in inferential statistics.</p>
+                <p style="margin-top:0.8rem;"><strong>Topic:</strong> Riemann vs. Lebesgue Integration & Numerical Computation of the Normal CDF. Domain vs. range partitioning, preimage measure computation, Dirichlet and Thomae pathological functions, Liouville's theorem proof ($R'(x) - xR(x) = 1$), Error Function ($\text{erf}$) canonical transcendent, and high-precision Gaussian quadrature benchmarks.</p>
                 <span class="status completed">Completed</span>
             </a>
         </div>

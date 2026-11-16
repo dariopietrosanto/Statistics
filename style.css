@@ -46,7 +46,61 @@ h3 {
 }
 
 p {
-    text-align: justify;
+    text-align: left;
+    line-height: 1.6;
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
+/* Global Responsive Tables & Wrappers */
+.table-responsive-wrapper,
+.table-scroll-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 1rem 0;
+    box-sizing: border-box;
+}
+
+.comparison-table {
+    width: 100%;
+    min-width: 550px;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 0.92rem;
+}
+
+.comparison-table th, .comparison-table td {
+    border: 1px solid #dce4ec;
+    padding: 0.75rem 0.8rem;
+    text-align: left;
+    vertical-align: top;
+    word-break: normal;
+}
+
+.comparison-table th {
+    background: #2c3e50;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.comparison-table tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+/* KaTeX Responsive Equation Safeguards */
+.katex-display {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 0.6rem 0.2rem !important;
+    margin: 0.8rem 0 !important;
+    max-width: 100% !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+.katex {
+    max-width: 100%;
+    white-space: normal;
 }
 
 /* Griglia per la Home */

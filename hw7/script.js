@@ -560,15 +560,15 @@
         }
 
         let narrative = `
-            <div style="font-size:0.95rem; line-height:1.6; color:#2c3e50;">
-                <p>
+            <div style="font-size:0.95rem; line-height:1.6; color:#2c3e50; text-align:left; word-break:normal; overflow-wrap:break-word;">
+                <p style="text-align:left; margin-bottom:0.8rem;">
                     <strong>Formal APA-Style Synthesis:</strong><br>
                     A Pearson's chi-square test of independence was evaluated to examine the statistical relationship between 
                     <strong>${escapeHTML(state.rowVar)}</strong> and <strong>${escapeHTML(state.colVar)}</strong> across $N = ${res.N.toLocaleString()}$ total observations. 
                     The association was found to be <strong>${isSig ? 'statistically significant' : 'not statistically significant'}</strong>, 
                     $\\chi^2(${res.df}, N = ${res.N}) = ${res.chi2.toFixed(2)}$, $${pFormatted}$, Cramér's $V = ${res.cramersV.toFixed(3)}$ (representing ${effectDescriptor} association).
                 </p>
-                <p>
+                <p style="text-align:left; margin-bottom:0.8rem;">
                     <strong>Substantive Interpretation:</strong><br>
                     ${isSig 
                         ? `Because the test statistic exceeds the critical threshold $(\\chi^2_{\\text{obs}} = ${res.chi2.toFixed(2)} > \\chi^2_{\\text{crit}} = ${res.criticalValue.toFixed(2)})$, we reject the null hypothesis of independence ($H_0$). Knowledge of an entity's category in ${escapeHTML(state.rowVar)} substantially alters the conditional probability distribution across ${escapeHTML(state.colVar)}.`
@@ -576,7 +576,7 @@
                     }
                 </p>
                 ${isSig ? `
-                <div style="background:#eafaf1; border-left:4px solid #27ae60; padding:0.8rem; border-radius:4px; margin-top:0.6rem;">
+                <div style="background:#eafaf1; border-left:4px solid #27ae60; padding:0.8rem; border-radius:4px; margin-top:0.6rem; text-align:left; word-break:normal; overflow-wrap:break-word;">
                     <strong>Key Localized Residual Drivers:</strong><br>
                     Inspection of Haberman's adjusted standardized residuals identifies the strongest positive dependency at cell 
                     <strong>[${escapeHTML(res.rowLabels[maxPos.r])} × ${escapeHTML(res.colLabels[maxPos.c])}]</strong> with $z = +${maxPos.z.toFixed(2)}$ ($n = ${res.matrix[maxPos.r][maxPos.c]}$ vs. $e = ${res.expected[maxPos.r][maxPos.c].toFixed(1)}$), 
@@ -1333,53 +1333,65 @@
                     However, when conditioning on the confounding variable $Z$ (<strong>Environment Exposure Tier</strong>), Automated Patching is superior in every single individual environment!
                 </p>
                 <div class="layout-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; margin-top:1rem;">
-                    <div style="background:#ffffff; padding:1rem; border:1px solid #d5dbdb; border-radius:4px;">
+                    <div style="background:#ffffff; padding:1rem; border:1px solid #d5dbdb; border-radius:4px; box-sizing:border-box;">
                         <h5 style="margin-top:0; color:#c0392b;">1. Aggregate Data (Confounded)</h5>
-                        <table class="contingency-display-table" style="font-size:0.85rem;">
-                            <tr><th>Strategy</th><th>Secured</th><th>Breached</th><th>Breach Rate</th></tr>
-                            <tr><td>Automated</td><td>260</td><td>140</td><td style="color:#e74c3c; font-weight:bold;">35.0%</td></tr>
-                            <tr><td>Manual</td><td>136</td><td>64</td><td style="color:#27ae60; font-weight:bold;">32.0%</td></tr>
-                        </table>
+                        <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+                            <table class="subgroup-table">
+                                <tr><th>Strategy</th><th>Secured</th><th>Breached</th><th>Breach Rate</th></tr>
+                                <tr><td>Automated</td><td>260</td><td>140</td><td style="color:#e74c3c; font-weight:bold;">35.0%</td></tr>
+                                <tr><td>Manual</td><td>136</td><td>64</td><td style="color:#27ae60; font-weight:bold;">32.0%</td></tr>
+                            </table>
+                        </div>
                         <p style="font-size:0.8rem; color:#7f8c8d; margin-top:0.5rem;">
                             <strong>Naive Inference:</strong> Manual seems 3.0% safer in crude aggregate!<br>
                             Chi-square: χ² = ${aggRes.chi2.toFixed(2)}, p = ${aggRes.pValue.toExponential(2)} (Spurious Association).
                         </p>
                     </div>
 
-                    <div style="background:#ffffff; padding:1rem; border:1px solid #d5dbdb; border-radius:4px;">
+                    <div style="background:#ffffff; padding:1rem; border:1px solid #d5dbdb; border-radius:4px; box-sizing:border-box;">
                         <h5 style="margin-top:0; color:#2980b9;">2. Subgroup A: High-Exposure DMZ (Z = 1)</h5>
-                        <table class="contingency-display-table" style="font-size:0.85rem;">
-                            <tr><th>Strategy</th><th>Secured</th><th>Breached</th><th>Breach Rate</th></tr>
-                            <tr><td>Automated</td><td>80</td><td>120</td><td style="color:#27ae60; font-weight:bold;">60.0%</td></tr>
-                            <tr><td>Manual</td><td>10</td><td>40</td><td style="color:#e74c3c; font-weight:bold;">80.0%</td></tr>
-                        </table>
+                        <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+                            <table class="subgroup-table">
+                                <tr><th>Strategy</th><th>Secured</th><th>Breached</th><th>Breach Rate</th></tr>
+                                <tr><td>Automated</td><td>80</td><td>120</td><td style="color:#27ae60; font-weight:bold;">60.0%</td></tr>
+                                <tr><td>Manual</td><td>10</td><td>40</td><td style="color:#e74c3c; font-weight:bold;">80.0%</td></tr>
+                            </table>
+                        </div>
                         <p style="font-size:0.8rem; color:#27ae60; font-weight:bold; margin-top:0.5rem;">
                             Automated is 20.0% SAFER in High-Exposure DMZ!
                         </p>
                     </div>
 
-                    <div style="background:#ffffff; padding:1rem; border:1px solid #d5dbdb; border-radius:4px;">
+                    <div style="background:#ffffff; padding:1rem; border:1px solid #d5dbdb; border-radius:4px; box-sizing:border-box;">
                         <h5 style="margin-top:0; color:#2980b9;">3. Subgroup B: Isolated Air-Gap (Z = 2)</h5>
-                        <table class="contingency-display-table" style="font-size:0.85rem;">
-                            <tr><th>Strategy</th><th>Secured</th><th>Breached</th><th>Breach Rate</th></tr>
-                            <tr><td>Automated</td><td>180</td><td>20</td><td style="color:#27ae60; font-weight:bold;">10.0%</td></tr>
-                            <tr><td>Manual</td><td>126</td><td>24</td><td style="color:#e74c3c; font-weight:bold;">16.0%</td></tr>
-                        </table>
+                        <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+                            <table class="subgroup-table">
+                                <tr><th>Strategy</th><th>Secured</th><th>Breached</th><th>Breach Rate</th></tr>
+                                <tr><td>Automated</td><td>180</td><td>20</td><td style="color:#27ae60; font-weight:bold;">10.0%</td></tr>
+                                <tr><td>Manual</td><td>126</td><td>24</td><td style="color:#e74c3c; font-weight:bold;">16.0%</td></tr>
+                            </table>
+                        </div>
                         <p style="font-size:0.8rem; color:#27ae60; font-weight:bold; margin-top:0.5rem;">
                             Automated is 6.0% SAFER in Isolated Air-Gap!
                         </p>
                     </div>
                 </div>
 
-                <div style="background:#ffffff; padding:1rem; border-radius:4px; margin-top:1rem; border:1px solid #e1e8ed;">
-                    <strong>Causal Analysis via Pearl's Do-Calculus:</strong>
+                <div style="background:#ffffff; padding:1.2rem; border-radius:4px; margin-top:1rem; border:1px solid #e1e8ed; overflow-x:auto; box-sizing:border-box;">
+                    <strong>Causal Analysis via Pearl's Do-Calculus:</strong><br>
                     The confounding variable $Z$ (Exposure Tier) acts as a common cause (fork: $X \\leftarrow Z \\rightarrow Y$). 
                     Because the Automated strategy was disproportionately assigned to the most hazardous internet-facing machines ($P(Z=1 \\mid \\text{Automated}) = 200/400 = 50.0\\%$ vs $P(Z=1 \\mid \\text{Manual}) = 50/200 = 25.0\\%$), the crude observational association $P(Y \\mid X)$ contains severe backdoor confounding bias. 
-                    Applying the <strong>Adjustment Formula</strong> ($P(Z=1) = 250/600$, $P(Z=2) = 350/600$):
-                    $$P(Y = \\text{Breached} \\mid \\text{do}(X = \\text{Auto})) = \\sum_z P(Y = \\text{Breached} \\mid X = \\text{Auto}, Z = z) P(Z = z) = 0.60 \\left(\\frac{250}{600}\\right) + 0.10 \\left(\\frac{350}{600}\\right) \\approx 30.83\\%$$
-                    $$P(Y = \\text{Breached} \\mid \\text{do}(X = \\text{Manual})) = \\sum_z P(Y = \\text{Breached} \\mid X = \\text{Manual}, Z = z) P(Z = z) = 0.80 \\left(\\frac{250}{600}\\right) + 0.16 \\left(\\frac{350}{600}\\right) \\approx 42.67\\%$$
+                    Applying the <strong>Backdoor Adjustment Formula</strong> ($P(Z=1) = 250/600$, $P(Z=2) = 350/600$):
+                    $$\\begin{aligned}
+                    P(Y = \\text{Breached} \\mid \\text{do}(X = \\text{Auto})) &= \\sum_z P(Y = \\text{Breached} \\mid X = \\text{Auto}, Z = z) P(Z = z) \\\\
+                    &= 0.60 \\left(\\frac{250}{600}\\right) + 0.10 \\left(\\frac{350}{600}\\right) \\approx \\mathbf{30.83\\%}
+                    \\end{aligned}$$
+                    $$\\begin{aligned}
+                    P(Y = \\text{Breached} \\mid \\text{do}(X = \\text{Manual})) &= \\sum_z P(Y = \\text{Breached} \\mid X = \\text{Manual}, Z = z) P(Z = z) \\\\
+                    &= 0.80 \\left(\\frac{250}{600}\\right) + 0.16 \\left(\\frac{350}{600}\\right) \\approx \\mathbf{42.67\\%}
+                    \\end{aligned}$$
                     Under true intervention ($\\text{do}(X)$), Automated Patching reduces the population breach risk by <strong>11.84 percentage points</strong>!
-            </div>
+                </div>
         `;
 
         dom.simpsonContainer.innerHTML = html;

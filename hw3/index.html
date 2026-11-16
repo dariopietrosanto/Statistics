@@ -167,7 +167,8 @@
                 While both schemes allow two parties to communicate across an insecure channel, their mathematical architectures, statistical properties, and security assurances belong to entirely different cryptographic paradigms.
             </p>
 
-            <table class="comparison-table">
+            <div class="table-responsive-wrapper">
+                <table class="comparison-table">
                 <thead>
                     <tr>
                         <th>Architectural Dimension</th>
@@ -203,6 +204,7 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
 
             <div class="stat-callout">
                 <h4 style="margin-top:0; color:#27ae60;">Statistical Entropy & Frequency Invariance</h4>
@@ -281,9 +283,11 @@
 
                 <!-- TOP CANDIDATES TABLE -->
                 <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">Chi-Square Candidate Ranking:</h4>
-                <table class="comparison-table" id="analysisResultsTable">
-                    <!-- Populated via JS -->
-                </table>
+                <div class="table-responsive-wrapper">
+                    <table class="comparison-table" id="analysisResultsTable">
+                        <!-- Populated via JS -->
+                    </table>
+                </div>
 
                 <!-- MULTI-METHOD COMPARISON -->
                 <div style="margin-top: 2rem; border-top: 1px solid #eee; padding-top: 1.5rem;">
@@ -359,7 +363,8 @@
 
             <!-- CONTRAST: STATISTICAL VS ALGEBRAIC ATTACKS -->
             <h3>Fundamental Contrasts: Caesar Statistical Attack vs. ECC Algebraic Attack</h3>
-            <table class="comparison-table">
+            <div class="table-responsive-wrapper">
+                <table class="comparison-table">
                 <thead>
                     <tr>
                         <th>Property</th>
@@ -385,6 +390,7 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
 
             <!-- WHY REAL SECP256K1 IS SECURE -->
             <h3>Why the Same Attack is Computationally Infeasible Against Production ECC</h3>

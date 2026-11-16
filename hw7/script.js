@@ -247,22 +247,22 @@
     const PRESETS = {
         attack_layer: {
             title: "Cybersecurity Incidents: Attack Vector vs. Target Layer",
-            description: "Cross-tabulation of 350 enterprise security incidents categorized by entry vector and compromised infrastructure layer.",
+            description: "Cross-tabulation of 460 enterprise security incidents categorized by entry vector and compromised infrastructure layer.",
             rowVar: "Attack Vector (X)",
             colVar: "Target Infrastructure Layer (Y)",
             rowLabels: ["Phishing / Social Eng.", "SQLi / Web Exploit", "Zero-Day Remote Code", "DDoS Volumetric", "Insider Privilege Abuse"],
             colLabels: ["Web DMZ Tier", "Application API", "Database Cluster", "Cloud IAM / Secrets"],
             matrix: [
-                [75, 20,  5, 10],  // Phishing -> heavily Web & Secrets
-                [25, 60, 45,  5],  // SQLi -> App & DB
-                [10, 35, 15, 25],  // Zero-Day -> distributed
-                [40,  5,  0,  0],  // DDoS -> Web DMZ
-                [ 5, 10, 30, 40]   // Insider -> DB & Cloud IAM
+                [75, 20,  5, 10],  // Phishing -> heavily Web & Secrets (sum: 110)
+                [25, 60, 45,  5],  // SQLi -> App & DB (sum: 135)
+                [10, 35, 15, 25],  // Zero-Day -> distributed (sum: 85)
+                [40,  5,  0,  0],  // DDoS -> Web DMZ (sum: 45)
+                [ 5, 10, 30, 40]   // Insider -> DB & Cloud IAM (sum: 85)
             ]
         },
         malware_persist: {
             title: "Endpoint Threat Forensics: Family vs. Persistence Technique",
-            description: "Forensic telemetry of 240 endpoints detailing threat family vs. MITRE ATT&CK persistence technique.",
+            description: "Forensic telemetry of 320 endpoints detailing threat family vs. MITRE ATT&CK persistence technique.",
             rowVar: "Malware Family (X)",
             colVar: "Persistence Mechanism (Y)",
             rowLabels: ["Ransomware", "Infostealer / Spyware", "Trojan-Dropper", "Rootkit / Worm"],
@@ -309,8 +309,8 @@
             rowLabels: ["Automated Pipeline", "Manual Sysadmin"],
             colLabels: ["Secured", "Breached"],
             matrix: [
-                [270, 130], // Automated: 130 / 400 = 32.5% breached
-                [160,  40]  // Manual:     40 / 200 = 20.0% breached
+                [260, 140], // Automated: 140 / 400 = 35.0% breached
+                [136,  64]  // Manual:      64 / 200 = 32.0% breached
             ],
             stratified: {
                 confounderVar: "Environment Exposure (Z)",
@@ -318,15 +318,15 @@
                     {
                         name: "Subgroup 1: External Facing / High Exposure Tier",
                         matrix: [
-                            [ 90, 110], // Automated: 110 / 200 = 55% breached
-                            [ 10,  30]  // Manual:      30 / 40  = 75% breached (Automated is BETTER!)
+                            [ 80, 120], // Automated: 120 / 200 = 60.0% breached
+                            [ 10,  40]  // Manual:      40 / 50  = 80.0% breached (Automated is 20% BETTER!)
                         ]
                     },
                     {
                         name: "Subgroup 2: Internal Isolated / Low Exposure Tier",
                         matrix: [
-                            [180,  20], // Automated:  20 / 200 = 10% breached
-                            [150,  10]  // Manual:      10 / 160 = 6.25% breached
+                            [180,  20], // Automated:  20 / 200 = 10.0% breached
+                            [126,  24]  // Manual:      24 / 150 = 16.0% breached (Automated is 6% BETTER!)
                         ]
                     }
                 ]
@@ -1337,11 +1337,11 @@
                         <h5 style="margin-top:0; color:#c0392b;">1. Aggregate Data (Confounded)</h5>
                         <table class="contingency-display-table" style="font-size:0.85rem;">
                             <tr><th>Strategy</th><th>Secured</th><th>Breached</th><th>Breach Rate</th></tr>
-                            <tr><td>Automated</td><td>270</td><td>130</td><td style="color:#e74c3c; font-weight:bold;">32.5%</td></tr>
-                            <tr><td>Manual</td><td>160</td><td>40</td><td style="color:#27ae60; font-weight:bold;">20.0%</td></tr>
+                            <tr><td>Automated</td><td>260</td><td>140</td><td style="color:#e74c3c; font-weight:bold;">35.0%</td></tr>
+                            <tr><td>Manual</td><td>136</td><td>64</td><td style="color:#27ae60; font-weight:bold;">32.0%</td></tr>
                         </table>
                         <p style="font-size:0.8rem; color:#7f8c8d; margin-top:0.5rem;">
-                            <strong>Naive Inference:</strong> Manual seems 12.5% safer!<br>
+                            <strong>Naive Inference:</strong> Manual seems 3.0% safer in crude aggregate!<br>
                             Chi-square: χ² = ${aggRes.chi2.toFixed(2)}, p = ${aggRes.pValue.toExponential(2)} (Spurious Association).
                         </p>
                     </div>
@@ -1350,11 +1350,11 @@
                         <h5 style="margin-top:0; color:#2980b9;">2. Subgroup A: High-Exposure DMZ (Z = 1)</h5>
                         <table class="contingency-display-table" style="font-size:0.85rem;">
                             <tr><th>Strategy</th><th>Secured</th><th>Breached</th><th>Breach Rate</th></tr>
-                            <tr><td>Automated</td><td>90</td><td>110</td><td style="color:#27ae60; font-weight:bold;">55.0%</td></tr>
-                            <tr><td>Manual</td><td>10</td><td>30</td><td style="color:#e74c3c; font-weight:bold;">75.0%</td></tr>
+                            <tr><td>Automated</td><td>80</td><td>120</td><td style="color:#27ae60; font-weight:bold;">60.0%</td></tr>
+                            <tr><td>Manual</td><td>10</td><td>40</td><td style="color:#e74c3c; font-weight:bold;">80.0%</td></tr>
                         </table>
                         <p style="font-size:0.8rem; color:#27ae60; font-weight:bold; margin-top:0.5rem;">
-                            Automated is 20% SAFER in High-Exposure DMZ!
+                            Automated is 20.0% SAFER in High-Exposure DMZ!
                         </p>
                     </div>
 
@@ -1363,23 +1363,22 @@
                         <table class="contingency-display-table" style="font-size:0.85rem;">
                             <tr><th>Strategy</th><th>Secured</th><th>Breached</th><th>Breach Rate</th></tr>
                             <tr><td>Automated</td><td>180</td><td>20</td><td style="color:#27ae60; font-weight:bold;">10.0%</td></tr>
-                            <tr><td>Manual</td><td>150</td><td>10</td><td style="color:#e74c3c; font-weight:bold;">6.25%</td></tr>
+                            <tr><td>Manual</td><td>126</td><td>24</td><td style="color:#e74c3c; font-weight:bold;">16.0%</td></tr>
                         </table>
-                        <p style="font-size:0.8rem; color:#7f8c8d; margin-top:0.5rem;">
-                            Baseline risk is low; manual sysadmins selectively assigned only to low-risk nodes.
+                        <p style="font-size:0.8rem; color:#27ae60; font-weight:bold; margin-top:0.5rem;">
+                            Automated is 6.0% SAFER in Isolated Air-Gap!
                         </p>
                     </div>
                 </div>
 
                 <div style="background:#ffffff; padding:1rem; border-radius:4px; margin-top:1rem; border:1px solid #e1e8ed;">
                     <strong>Causal Analysis via Pearl's Do-Calculus:</strong>
-                    The confounding variable $Z$ (Exposure) acts as a common cause (fork: $X \leftarrow Z \rightarrow Y$). 
-                    Because the Automated strategy was disproportionately assigned to the most hazardous internet-facing machines ($P(Z=1 \mid \text{Automated}) = 0.50$ vs $P(Z=1 \mid \text{Manual}) = 0.20$), the crude observational association $P(Y \mid X)$ contains backdoor confounding bias. 
-                    Applying the <strong>Adjustment Formula</strong>:
-                    $$P(Y = \text{Breached} \mid \text{do}(X = \text{Auto})) = \sum_z P(Y = \text{Breached} \mid X = \text{Auto}, Z = z) P(Z = z) \approx 25.0\%$$
-                    $$P(Y = \text{Breached} \mid \text{do}(X = \text{Manual})) = \sum_z P(Y = \text{Breached} \mid X = \text{Manual}, Z = z) P(Z = z) \approx 30.8\%$$
-                    Under true intervention ($\text{do}(X)$), Automated Patching reduces breach risk by over 5.8 percentage points.
-                </div>
+                    The confounding variable $Z$ (Exposure Tier) acts as a common cause (fork: $X \\leftarrow Z \\rightarrow Y$). 
+                    Because the Automated strategy was disproportionately assigned to the most hazardous internet-facing machines ($P(Z=1 \\mid \\text{Automated}) = 200/400 = 50.0\\%$ vs $P(Z=1 \\mid \\text{Manual}) = 50/200 = 25.0\\%$), the crude observational association $P(Y \\mid X)$ contains severe backdoor confounding bias. 
+                    Applying the <strong>Adjustment Formula</strong> ($P(Z=1) = 250/600$, $P(Z=2) = 350/600$):
+                    $$P(Y = \\text{Breached} \\mid \\text{do}(X = \\text{Auto})) = \\sum_z P(Y = \\text{Breached} \\mid X = \\text{Auto}, Z = z) P(Z = z) = 0.60 \\left(\\frac{250}{600}\\right) + 0.10 \\left(\\frac{350}{600}\\right) \\approx 30.83\\%$$
+                    $$P(Y = \\text{Breached} \\mid \\text{do}(X = \\text{Manual})) = \\sum_z P(Y = \\text{Breached} \\mid X = \\text{Manual}, Z = z) P(Z = z) = 0.80 \\left(\\frac{250}{600}\\right) + 0.16 \\left(\\frac{350}{600}\\right) \\approx 42.67\\%$$
+                    Under true intervention ($\\text{do}(X)$), Automated Patching reduces the population breach risk by <strong>11.84 percentage points</strong>!
             </div>
         `;
 

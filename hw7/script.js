@@ -3,14 +3,18 @@
  * Author: Dario Pietrosanto (Matricola: 2055042)
  * Master's Degree Course in Applied Statistics & Cybersecurity
  *
- * Core Modules:
+ * Comprehensive Modules:
  * - Programmatic Contingency Cross-Tabulation (Observed, Expected, Marginals, Conditionals)
- * - Pearson Residuals & Haberman's Adjusted Standardized Residuals
+ * - Pearson Residuals, Haberman's Adjusted Standardized Residuals, and Cell Chi-Square Contributions
  * - Inferential Hypothesis Testing: Pearson's Chi-Square, Likelihood Ratio Deviance (G^2),
  *   Fisher's Exact Test, and Measures of Association (Cramer's V, Tschuprow's T, Contingency Coeff C)
  * - Exact P-Value via Incomplete Gamma Function (Lanczos + Lentz Continued Fraction)
+ * - Non-Parametric Monte Carlo Permutation Test (B = 1,000+ Shuffles)
+ * - Dynamic APA-Style Statistical Interpretation & Residual Diagnostics Generator
  * - Interactive Mosaic / Spineplot Canvas with Residual Coloring
  * - Theoretical Chi-Square Density & Critical Rejection Region Canvas
+ * - Conditional vs. Marginal Distribution Comparison Canvas (Visual Independence Proof)
+ * - Causal DAG Studio: Fork (Confounder), Collider (Berkson's Fallacy), Chain, and Mediator
  * - Simpson's Paradox & Causal Confounder Demonstration Engine
  */
 
@@ -118,18 +122,15 @@
      */
     function chiSquareCritical(alpha, df) {
         if (df <= 0) return 0.0;
-        // Normal quantile approximation for starting point
-        let z = 1.6448536; // default 0.05
+        let z = 1.6448536;
         if (Math.abs(alpha - 0.10) < 1e-4) z = 1.2815516;
         else if (Math.abs(alpha - 0.05) < 1e-4) z = 1.6448536;
         else if (Math.abs(alpha - 0.01) < 1e-4) z = 2.3263479;
         else if (Math.abs(alpha - 0.001) < 1e-4) z = 3.0902323;
 
-        // Wilson-Hilferty transformation
         let x = df * Math.pow(1.0 - 2.0 / (9.0 * df) + z * Math.sqrt(2.0 / (9.0 * df)), 3.0);
         if (x <= 0) x = 0.5;
 
-        // Newton-Raphson refinement
         for (let iter = 0; iter < 25; iter++) {
             const p = chiSquarePValue(x, df);
             const err = p - alpha;
@@ -173,6 +174,72 @@
         return Math.min(1.0, pTotal);
     }
 
+    /**
+     * Monte Carlo Permutation Test for Contingency Table Independence
+     * Computes non-parametric empirical p-value by conditioning on marginal totals
+     */
+    function monteCarloPermutationTest(matrix, rSums, cSums, N, chi2Obs, B = 1000) {
+        const r = matrix.length;
+        const c = matrix[0].length;
+        
+        const colLabelsArr = new Int32Array(N);
+        let idx = 0;
+        for (let j = 0; j < c; j++) {
+            for (let k = 0; k < cSums[j]; k++) {
+                colLabelsArr[idx++] = j;
+            }
+        }
+
+        const expected = [];
+        for (let i = 0; i < r; i++) {
+            expected[i] = new Float64Array(c);
+            for (let j = 0; j < c; j++) {
+                expected[i][j] = (rSums[i] * cSums[j]) / N;
+            }
+        }
+
+        let extremeCount = 0;
+        const permMatrix = [];
+        for (let i = 0; i < r; i++) permMatrix[i] = new Int32Array(c);
+
+        for (let b = 0; b < B; b++) {
+            // Fisher-Yates shuffle
+            for (let k = N - 1; k > 0; k--) {
+                const j = Math.floor(Math.random() * (k + 1));
+                const tmp = colLabelsArr[k];
+                colLabelsArr[k] = colLabelsArr[j];
+                colLabelsArr[j] = tmp;
+            }
+
+            for (let i = 0; i < r; i++) {
+                for (let j = 0; j < c; j++) permMatrix[i][j] = 0;
+            }
+
+            let pIdx = 0;
+            for (let i = 0; i < r; i++) {
+                const rowCount = rSums[i];
+                for (let k = 0; k < rowCount; k++) {
+                    const colCat = colLabelsArr[pIdx++];
+                    permMatrix[i][colCat]++;
+                }
+            }
+
+            let curChi2 = 0;
+            for (let i = 0; i < r; i++) {
+                for (let j = 0; j < c; j++) {
+                    const diff = permMatrix[i][j] - expected[i][j];
+                    curChi2 += (diff * diff) / expected[i][j];
+                }
+            }
+
+            if (curChi2 >= chi2Obs - 1e-9) {
+                extremeCount++;
+            }
+        }
+
+        return (1.0 + extremeCount) / (1.0 + B);
+    }
+
     // =========================================================================
     // 2. PRE-LOADED DATASETS & PARSING UTILITIES
     // =========================================================================
@@ -194,7 +261,7 @@
             ]
         },
         malware_persist: {
-            title: "Endpoint Malware Family vs. Persistence Mechanism",
+            title: "Endpoint Threat Forensics: Family vs. Persistence Technique",
             description: "Forensic telemetry of 240 endpoints detailing threat family vs. MITRE ATT&CK persistence technique.",
             rowVar: "Malware Family (X)",
             colVar: "Persistence Mechanism (Y)",
@@ -208,7 +275,7 @@
             ]
         },
         mfa_breach: {
-            title: "Authentication Policy vs. Account Takeover (ATO) Status",
+            title: "Identity Protection: Authentication Policy vs. Compromise Outcome",
             description: "Empirical study on 500 credential stuffing events evaluating authentication factor strength against breach outcomes.",
             rowVar: "MFA Enforcement Protocol (X)",
             colVar: "Incident Outcome (Y)",
@@ -222,8 +289,8 @@
             ]
         },
         independent_benchmark: {
-            title: "Synthetic Benchmark: Strictly Independent Bivariate Distribution",
-            description: "Theoretical sample where joint probabilities strictly equal product of marginals P(X, Y) = P(X)P(Y). Demonstrates chi-square null hypothesis.",
+            title: "Theoretical Reference: Strictly Independent Bivariate Model",
+            description: "Synthetic sample where joint probabilities strictly equal product of marginals P(X, Y) = P(X)P(Y). Demonstrates chi-square null hypothesis.",
             rowVar: "Synthetic Factor A",
             colVar: "Synthetic Factor B",
             rowLabels: ["Class A1", "Class A2", "Class A3"],
@@ -235,7 +302,7 @@
             ]
         },
         simpson_paradox: {
-            title: "Simpson's Paradox in Security Patching (Aggregate View)",
+            title: "Simpson's Paradox in Security Remediation (Confounded Aggregate)",
             description: "Aggregate comparison of patch deployment strategy vs. breach outcome. Appears Automated Patching has higher failure rate!",
             rowVar: "Patch Deployment Protocol (X)",
             colVar: "System Outcome (Y)",
@@ -268,7 +335,7 @@
     };
 
     // =========================================================================
-    // 3. APPLICATION STATE & DOM REFS
+    // 3. APPLICATION STATE & DOM REFERENCES
     // =========================================================================
 
     let state = {
@@ -280,7 +347,8 @@
         matrix: PRESETS.attack_layer.matrix.map(row => [...row]),
         alpha: 0.05,
         analysisResults: null,
-        activeTab: "observed" // 'observed' | 'relative' | 'row_cond' | 'col_cond' | 'expected' | 'residuals'
+        activeTab: "observed", // 'observed' | 'relative' | 'row_cond' | 'col_cond' | 'expected' | 'residuals' | 'chi2_contrib'
+        activeDagModel: "fork" // 'fork' | 'collider' | 'chain' | 'mediator'
     };
 
     let dom = {};
@@ -299,9 +367,8 @@
         dom.delColBtn = document.getElementById('del-col-btn');
         dom.resetTableBtn = document.getElementById('reset-table-btn');
 
-        // Contingency table containers
+        // Containers
         dom.tableEditorContainer = document.getElementById('table-editor-container');
-        dom.tableTabsContainer = document.getElementById('table-tabs-container');
         dom.activeTableDisplay = document.getElementById('active-table-display');
 
         // Results displays
@@ -318,10 +385,21 @@
         dom.fisher2x2Card = document.getElementById('fisher-2x2-card');
         dom.fisherPVal = document.getElementById('fisher-p-val');
 
+        // Interpretation Narrative Card
+        dom.narrativeInterpretationCard = document.getElementById('narrative-interpretation-card');
+
+        // Monte Carlo Permutation Test
+        dom.runPermutationBtn = document.getElementById('run-permutation-btn');
+        dom.permResultDisplay = document.getElementById('perm-result-display');
+
         // Canvases
         dom.canvasMosaic = document.getElementById('canvas-mosaic');
         dom.canvasChi2Dist = document.getElementById('canvas-chi2-dist');
         dom.canvasResidualHeatmap = document.getElementById('canvas-residual-heatmap');
+        dom.canvasCondMarginal = document.getElementById('canvas-cond-marginal');
+        dom.canvasCausalDag = document.getElementById('canvas-causal-dag');
+        dom.dagSelect = document.getElementById('dag-select');
+        dom.dagDescription = document.getElementById('dag-description');
 
         // CSV Parser
         dom.csvInputArea = document.getElementById('csv-input-area');
@@ -341,9 +419,6 @@
     // 4. STATISTICAL ANALYSIS ENGINE
     // =========================================================================
 
-    /**
-     * Compute full statistical breakdown of contingency table
-     */
     function computeContingencyAnalysis(matrix, rowLabels, colLabels, alpha = 0.05) {
         const r = matrix.length;
         const c = matrix[0].length;
@@ -360,11 +435,8 @@
             }
         }
 
-        if (N <= 0) {
-            return null;
-        }
+        if (N <= 0) return null;
 
-        // Relative joint frequencies p_ij = n_ij / N
         const jointProbs = [];
         const rowCondProbs = [];
         const colCondProbs = [];
@@ -372,9 +444,10 @@
         const rawResiduals = [];
         const pearsonResiduals = [];
         const adjustedResiduals = [];
+        const chi2Contributions = [];
 
         let chi2 = 0.0;
-        let G2 = 0.0; // Likelihood ratio deviance
+        let G2 = 0.0;
         let cellsUnder5 = 0;
         let minExpected = Infinity;
 
@@ -385,6 +458,7 @@
             rawResiduals[i] = [];
             pearsonResiduals[i] = [];
             adjustedResiduals[i] = [];
+            chi2Contributions[i] = [];
 
             for (let j = 0; j < c; j++) {
                 const o = Math.max(0, Number(matrix[i][j]) || 0);
@@ -402,13 +476,14 @@
 
                 const pRes = e > 0 ? diff / Math.sqrt(e) : 0.0;
                 pearsonResiduals[i][j] = pRes;
-                chi2 += pRes * pRes;
+                const cellChi2 = pRes * pRes;
+                chi2Contributions[i][j] = cellChi2;
+                chi2 += cellChi2;
 
                 if (o > 0 && e > 0) {
                     G2 += 2.0 * o * Math.log(o / e);
                 }
 
-                // Haberman's adjusted standardized residual: N(0, 1) under H0
                 const pRow = rowSums[i] / N;
                 const pCol = colSums[j] / N;
                 const denom = Math.sqrt(e * (1.0 - pRow) * (1.0 - pCol));
@@ -416,7 +491,6 @@
             }
         }
 
-        // Column conditional probabilities
         for (let i = 0; i < r; i++) {
             colCondProbs[i] = [];
             for (let j = 0; j < c; j++) {
@@ -430,7 +504,6 @@
         const criticalValue = chiSquareCritical(alpha, df);
         const isIndependent = pValue >= alpha;
 
-        // Measures of Association
         const minDim = Math.min(r - 1, c - 1);
         const cramersV = minDim > 0 ? Math.sqrt(chi2 / (N * minDim)) : 0.0;
         const tschuprowT = (r > 1 && c > 1) ? Math.sqrt(chi2 / (N * Math.sqrt((r - 1) * (c - 1)))) : 0.0;
@@ -438,11 +511,7 @@
         const mutualInfoNats = G2 / (2.0 * N);
         const mutualInfoBits = mutualInfoNats / Math.LN2;
 
-        // Yates' correction and Fisher's exact test if 2x2 table
-        let yatesChi2 = null;
-        let yatesPVal = null;
-        let fisherPVal = null;
-
+        let yatesChi2 = null, yatesPVal = null, fisherPVal = null;
         if (r === 2 && c === 2) {
             const a = matrix[0][0], b = matrix[0][1], cCell = matrix[1][0], d = matrix[1][1];
             const numYates = Math.max(0, Math.abs(a * d - b * cCell) - N / 2.0);
@@ -460,7 +529,7 @@
             rowLabels, colLabels,
             matrix,
             jointProbs, rowCondProbs, colCondProbs,
-            expected, rawResiduals, pearsonResiduals, adjustedResiduals,
+            expected, rawResiduals, pearsonResiduals, adjustedResiduals, chi2Contributions,
             chi2, pValue, criticalValue, isIndependent,
             G2, mutualInfoNats, mutualInfoBits,
             cramersV, tschuprowT, contingencyC,
@@ -470,13 +539,60 @@
         };
     }
 
+    /**
+     * Generate dynamic APA-style Statistical Interpretation Narrative
+     */
+    function generateInterpretationReport(res) {
+        if (!res) return "";
+        const isSig = res.pValue < res.alpha;
+        const pFormatted = res.pValue < 0.0001 ? "p < .0001" : `p = ${res.pValue.toFixed(4)}`;
+        const effectDescriptor = res.cramersV > 0.5 ? "a very strong" : (res.cramersV > 0.3 ? "a moderate-to-strong" : (res.cramersV > 0.1 ? "a small-to-moderate" : "a negligible"));
+
+        // Identify most extreme residuals
+        let maxPos = { z: -Infinity, r: 0, c: 0 };
+        let maxNeg = { z: Infinity, r: 0, c: 0 };
+        for (let i = 0; i < res.r; i++) {
+            for (let j = 0; j < res.c; j++) {
+                const z = res.adjustedResiduals[i][j];
+                if (z > maxPos.z) maxPos = { z, r: i, c: j };
+                if (z < maxNeg.z) maxNeg = { z, r: i, c: j };
+            }
+        }
+
+        let narrative = `
+            <div style="font-size:0.95rem; line-height:1.6; color:#2c3e50;">
+                <p>
+                    <strong>Formal APA-Style Synthesis:</strong><br>
+                    A Pearson's chi-square test of independence was evaluated to examine the statistical relationship between 
+                    <strong>${escapeHTML(state.rowVar)}</strong> and <strong>${escapeHTML(state.colVar)}</strong> across $N = ${res.N.toLocaleString()}$ total observations. 
+                    The association was found to be <strong>${isSig ? 'statistically significant' : 'not statistically significant'}</strong>, 
+                    $\\chi^2(${res.df}, N = ${res.N}) = ${res.chi2.toFixed(2)}$, $${pFormatted}$, Cramér's $V = ${res.cramersV.toFixed(3)}$ (representing ${effectDescriptor} association).
+                </p>
+                <p>
+                    <strong>Substantive Interpretation:</strong><br>
+                    ${isSig 
+                        ? `Because the test statistic exceeds the critical threshold $(\\chi^2_{\\text{obs}} = ${res.chi2.toFixed(2)} > \\chi^2_{\\text{crit}} = ${res.criticalValue.toFixed(2)})$, we reject the null hypothesis of independence ($H_0$). Knowledge of an entity's category in ${escapeHTML(state.rowVar)} substantially alters the conditional probability distribution across ${escapeHTML(state.colVar)}.`
+                        : `Because the test statistic does not exceed the critical threshold $(\\chi^2_{\\text{obs}} = ${res.chi2.toFixed(2)} \\le \\chi^2_{\\text{crit}} = ${res.criticalValue.toFixed(2)})$, we fail to reject the null hypothesis ($H_0$). The empirical deviations between observed and expected cell counts are completely compatible with random sampling variability.`
+                    }
+                </p>
+                ${isSig ? `
+                <div style="background:#eafaf1; border-left:4px solid #27ae60; padding:0.8rem; border-radius:4px; margin-top:0.6rem;">
+                    <strong>Key Localized Residual Drivers:</strong><br>
+                    Inspection of Haberman's adjusted standardized residuals identifies the strongest positive dependency at cell 
+                    <strong>[${escapeHTML(res.rowLabels[maxPos.r])} × ${escapeHTML(res.colLabels[maxPos.c])}]</strong> with $z = +${maxPos.z.toFixed(2)}$ ($n = ${res.matrix[maxPos.r][maxPos.c]}$ vs. $e = ${res.expected[maxPos.r][maxPos.c].toFixed(1)}$), 
+                    and the strongest negative deficit at cell 
+                    <strong>[${escapeHTML(res.rowLabels[maxNeg.r])} × ${escapeHTML(res.colLabels[maxNeg.c])}]</strong> with $z = ${maxNeg.z.toFixed(2)}$ ($n = ${res.matrix[maxNeg.r][maxNeg.c]}$ vs. $e = ${res.expected[maxNeg.r][maxNeg.c].toFixed(1)}$).
+                </div>
+                ` : ''}
+            </div>
+        `;
+        return narrative;
+    }
+
     // =========================================================================
     // 5. RENDERING: TABLES & CONTINGENCY EDITORS
     // =========================================================================
 
-    /**
-     * Build the interactive live frequency editor table
-     */
     function renderTableEditor() {
         if (!dom.tableEditorContainer) return;
         const r = state.matrix.length;
@@ -509,7 +625,6 @@
             html += '</tr>';
         }
 
-        // Bottom Column Marginals row
         html += '<tr style="font-weight:bold; background:#f4f6f7;">';
         html += '<th style="background:#7f8c8d; color:white;">Col Sum (n_·j)</th>';
         for (let j = 0; j < c; j++) {
@@ -522,17 +637,13 @@
         attachEditorListeners();
     }
 
-    /**
-     * Render the active statistical perspective table (Observed, Relative, Conditional, Expected, Residuals)
-     */
     function renderActiveTableDisplay(res) {
         if (!dom.activeTableDisplay || !res) return;
         const r = res.r;
         const c = res.c;
         const tab = state.activeTab;
 
-        let tableTitle = "";
-        let tableSubtitle = "";
+        let tableTitle = "", tableSubtitle = "";
 
         if (tab === "observed") {
             tableTitle = "Observed Absolute Contingency Frequencies (n_ij)";
@@ -548,10 +659,13 @@
             tableSubtitle = "Distribution of row variable X conditioned upon column state Y (each column sums to 100%).";
         } else if (tab === "expected") {
             tableTitle = "Theoretical Expected Frequencies Under Independence (e_ij = n_i· * n_·j / N)";
-            tableSubtitle = "Frequencies that would arise if variables were statistically independent. Highlights Cochran criteria (< 5).";
+            tableSubtitle = "Frequencies that would arise under statistical independence. Highlights Cochran criteria (< 5).";
         } else if (tab === "residuals") {
             tableTitle = "Standardized Haberman Residuals z_ij = (n_ij - e_ij) / SE";
             tableSubtitle = "Z-scores under H0 ~ N(0, 1). Absolute values > 1.96 (p < 0.05) or > 2.58 (p < 0.01) indicate localized structural attraction (+) or repulsion (-).";
+        } else if (tab === "chi2_contrib") {
+            tableTitle = "Cell Contributions to Total Chi-Square Statistic ((n_ij - e_ij)² / e_ij)";
+            tableSubtitle = "Component breakdown showing the exact additive contribution of each cell to χ² = " + res.chi2.toFixed(2) + ".";
         }
 
         let html = `<div style="margin-bottom:0.6rem;"><strong>${tableTitle}</strong><br><small style="color:#7f8c8d;">${tableSubtitle}</small></div>`;
@@ -560,7 +674,7 @@
         for (let j = 0; j < c; j++) {
             html += `<th>${escapeHTML(res.colLabels[j])}</th>`;
         }
-        if (tab !== "residuals") {
+        if (tab !== "residuals" && tab !== "chi2_contrib") {
             html += '<th style="background:#34495e; color:#ffffff;">Marginal Row Total</th>';
         }
         html += '</tr></thead><tbody>';
@@ -600,13 +714,17 @@
                         cellStyle = z > 0 ? "background:#eafaf1; color:#27ae60;" : "background:#fdedec; color:#e74c3c;";
                     }
                     cellContent = `${zStr}<br><small style="color:#7f8c8d;">Diff: ${(res.matrix[i][j] - res.expected[i][j]).toFixed(1)}</small>`;
+                } else if (tab === "chi2_contrib") {
+                    const cVal = res.chi2Contributions[i][j];
+                    const pctTotal = res.chi2 > 0 ? ((cVal / res.chi2) * 100).toFixed(1) : 0;
+                    if (cVal > 5.0) cellStyle = "background:#fcf3cf; font-weight:bold; color:#b7950b;";
+                    cellContent = `${cVal.toFixed(2)}<br><small style="color:#7f8c8d;">(${pctTotal}%)</small>`;
                 }
 
                 html += `<td style="${cellStyle}">${cellContent}</td>`;
             }
 
-            // Marginal Row
-            if (tab === "observed") {
+            if (tab === "observed" || tab === "expected") {
                 html += `<td style="font-weight:bold; background:#edf2f7;">${res.rowSums[i]}</td>`;
             } else if (tab === "relative") {
                 html += `<td style="font-weight:bold; background:#edf2f7;">${((res.rowSums[i] / res.N) * 100).toFixed(2)}%</td>`;
@@ -614,15 +732,12 @@
                 html += `<td style="font-weight:bold; background:#edf2f7;">100.00%</td>`;
             } else if (tab === "col_cond") {
                 html += `<td style="font-weight:bold; background:#edf2f7;">-</td>`;
-            } else if (tab === "expected") {
-                html += `<td style="font-weight:bold; background:#edf2f7;">${res.rowSums[i]}</td>`;
             }
 
             html += '</tr>';
         }
 
-        // Marginal Column Row
-        if (tab !== "residuals") {
+        if (tab !== "residuals" && tab !== "chi2_contrib") {
             html += '<tr style="font-weight:bold; background:#edf2f7;">';
             html += '<th style="background:#2c3e50; color:#ffffff;">Marginal Col Total</th>';
             for (let j = 0; j < c; j++) {
@@ -650,11 +765,7 @@
         dom.activeTableDisplay.innerHTML = html;
     }
 
-    /**
-     * Attach event listeners to live editable table cells
-     */
     function attachEditorListeners() {
-        // Frequency cells
         document.querySelectorAll('.cell-freq-input').forEach(input => {
             input.addEventListener('change', (e) => {
                 const rIdx = parseInt(e.target.dataset.row, 10);
@@ -666,7 +777,6 @@
             });
         });
 
-        // Row label headers
         document.querySelectorAll('.row-header-input').forEach(input => {
             input.addEventListener('change', (e) => {
                 const rIdx = parseInt(e.target.dataset.row, 10);
@@ -675,7 +785,6 @@
             });
         });
 
-        // Col label headers
         document.querySelectorAll('.col-header-input').forEach(input => {
             input.addEventListener('change', (e) => {
                 const cIdx = parseInt(e.target.dataset.col, 10);
@@ -690,7 +799,7 @@
     // =========================================================================
 
     /**
-     * Canvas 1: Mosaic Plot / Spineplot with Pearson Residual Color Coding
+     * Canvas 1: Mosaic Plot
      */
     function renderMosaicCanvas(res) {
         const canvas = dom.canvasMosaic;
@@ -703,27 +812,22 @@
         const plotW = W - padLeft - padRight;
         const plotH = H - padTop - padBottom;
 
-        const r = res.r;
-        const c = res.c;
-        const N = res.N;
+        const r = res.r, c = res.c, N = res.N;
 
         ctx.fillStyle = "#fafbfc";
         ctx.fillRect(padLeft, padTop, plotW, plotH);
 
-        // Column widths proportional to marginal column totals colSums[j] / N
         let curX = padLeft;
         for (let j = 0; j < c; j++) {
             const colFrac = res.colSums[j] / N;
             const colWidth = colFrac * plotW;
 
-            // Within this column, vertical splits proportional to column conditional prob colCondProbs[i][j]
             let curY = padTop + plotH;
             for (let i = r - 1; i >= 0; i--) {
                 const condFrac = res.colCondProbs[i][j];
                 const sliceH = condFrac * plotH;
                 curY -= sliceH;
 
-                // Color based on Pearson standardized residual
                 const z = res.adjustedResiduals[i][j];
                 let fillColor = "#ecf0f1";
                 if (z > 2.58) fillColor = "rgba(39, 174, 96, 0.85)";
@@ -741,7 +845,6 @@
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(curX, curY, colWidth, sliceH);
 
-                // Cell label if slice is sufficiently large
                 if (colWidth > 35 && sliceH > 18) {
                     ctx.fillStyle = Math.abs(z) > 1.96 ? "#ffffff" : "#2c3e50";
                     ctx.font = "bold 10px sans-serif";
@@ -750,7 +853,6 @@
                 }
             }
 
-            // Column label at bottom
             ctx.fillStyle = "#2c3e50";
             ctx.font = "10px sans-serif";
             ctx.textAlign = "center";
@@ -763,7 +865,6 @@
             curX += colWidth;
         }
 
-        // Row labels on left axis
         ctx.fillStyle = "#2c3e50";
         ctx.font = "10px sans-serif";
         ctx.textAlign = "right";
@@ -776,7 +877,6 @@
             leftY -= rH;
         }
 
-        // Title and Legend
         ctx.fillStyle = "#2c3e50";
         ctx.font = "bold 11px sans-serif";
         ctx.textAlign = "left";
@@ -784,7 +884,7 @@
     }
 
     /**
-     * Canvas 2: Theoretical Chi-Square Density & Critical Region
+     * Canvas 2: Chi-Square Density & Critical Region
      */
     function renderChi2DistCanvas(res) {
         const canvas = dom.canvasChi2Dist;
@@ -801,15 +901,13 @@
         const chi2Obs = res.chi2;
         const chi2Crit = res.criticalValue;
 
-        // X-range: from 0 up to max of (crit * 1.5, obs * 1.3, df * 3.5, 15)
         const xMax = Math.max(16.0, chi2Crit * 1.5, chi2Obs * 1.3, df * 3.0);
         const xMin = 0.0;
 
-        // Peak y-value for scaling
         let peakY = 0.0;
         const modeX = Math.max(0.1, df - 2);
         peakY = Math.max(0.15, chiSquarePDF(modeX, df) * 1.25);
-        if (df === 1) peakY = 0.8; // singularity at 0 capped
+        if (df === 1) peakY = 0.8;
 
         const mapX = (x) => padLeft + ((x - xMin) / (xMax - xMin)) * plotW;
         const mapY = (y) => padTop + (1.0 - Math.min(1.0, y / peakY)) * plotH;
@@ -817,7 +915,6 @@
         ctx.fillStyle = "#fafbfc";
         ctx.fillRect(padLeft, padTop, plotW, plotH);
 
-        // Grid
         ctx.strokeStyle = "#e1e4e8";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -828,7 +925,6 @@
         }
         ctx.stroke();
 
-        // Shaded Critical Rejection Region: [chi2Crit, xMax]
         ctx.beginPath();
         ctx.moveTo(mapX(chi2Crit), mapY(0));
         const critSteps = 100;
@@ -842,7 +938,6 @@
         ctx.fillStyle = "rgba(231, 76, 60, 0.35)";
         ctx.fill();
 
-        // Draw Chi-Square PDF curve
         ctx.beginPath();
         ctx.strokeStyle = "#2c3e50";
         ctx.lineWidth = 2.5;
@@ -857,7 +952,6 @@
         }
         ctx.stroke();
 
-        // Critical value vertical boundary line
         const cxX = mapX(chi2Crit);
         ctx.strokeStyle = "#e74c3c";
         ctx.lineWidth = 2;
@@ -873,7 +967,6 @@
         ctx.textAlign = "center";
         ctx.fillText(`χ²_crit = ${chi2Crit.toFixed(2)}`, cxX, padTop + 14);
 
-        // Observed Statistic vertical line (in blue)
         const obsX = mapX(Math.min(xMax, chi2Obs));
         ctx.strokeStyle = "#2980b9";
         ctx.lineWidth = 2.5;
@@ -882,7 +975,6 @@
         ctx.lineTo(obsX, padTop + plotH);
         ctx.stroke();
 
-        // Diamond marker at top of obs line
         ctx.fillStyle = "#2980b9";
         ctx.beginPath();
         ctx.arc(obsX, padTop + 20, 5, 0, 2 * Math.PI);
@@ -894,7 +986,6 @@
         const textOffset = (obsX > padLeft + plotW - 70) ? -8 : 8;
         ctx.fillText(`χ²_obs = ${chi2Obs.toFixed(2)} (p = ${res.pValue < 0.0001 ? '<0.0001' : res.pValue.toFixed(4)})`, obsX + textOffset, padTop + 24);
 
-        // Axes
         ctx.strokeStyle = "#2c3e50";
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -903,7 +994,6 @@
         ctx.lineTo(padLeft + plotW, padTop + plotH);
         ctx.stroke();
 
-        // Axis label
         ctx.fillStyle = "#2c3e50";
         ctx.font = "bold 11px sans-serif";
         ctx.textAlign = "center";
@@ -924,8 +1014,7 @@
         const plotW = W - padLeft - padRight;
         const plotH = H - padTop - padBottom;
 
-        const r = res.r;
-        const c = res.c;
+        const r = res.r, c = res.c;
         const cellW = plotW / c;
         const cellH = plotH / r;
 
@@ -956,7 +1045,6 @@
                 ctx.fillText((z >= 0 ? "+" : "") + z.toFixed(2), x + cellW / 2, y + cellH / 2 + 4);
             }
 
-            // Row header
             ctx.fillStyle = "#2c3e50";
             ctx.font = "10px sans-serif";
             ctx.textAlign = "right";
@@ -964,7 +1052,6 @@
             ctx.fillText(rowLabelShort, padLeft - 8, padTop + i * cellH + cellH / 2 + 4);
         }
 
-        // Col headers
         for (let j = 0; j < c; j++) {
             ctx.fillStyle = "#2c3e50";
             ctx.font = "10px sans-serif";
@@ -979,6 +1066,255 @@
         ctx.fillText("Standardized Haberman Residuals Heatmap (Z-score attraction/repulsion)", padLeft, padTop - 12);
     }
 
+    /**
+     * Canvas 4: Conditional vs. Marginal Distribution (Visual Independence Proof)
+     * Demonstrates that if X and Y are independent, all conditional profiles P(Y | X = x_i)
+     * align identically with the marginal profile P(Y).
+     */
+    function renderCondMarginalCanvas(res) {
+        const canvas = dom.canvasCondMarginal;
+        if (!canvas || !res) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        const padLeft = 50, padRight = 30, padTop = 30, padBottom = 45;
+        const plotW = W - padLeft - padRight;
+        const plotH = H - padTop - padBottom;
+
+        const c = res.c;
+        const r = res.r;
+
+        ctx.fillStyle = "#fafbfc";
+        ctx.fillRect(padLeft, padTop, plotW, plotH);
+
+        // Group width for each column category Y_j
+        const groupW = plotW / c;
+        const totalBarsPerGroup = r + 1; // 1 marginal + r conditionals
+        const barW = Math.max(4, Math.min(22, (groupW * 0.75) / totalBarsPerGroup));
+
+        // Colors for bars: Black for marginal, distinct hues for conditional rows
+        const rowColors = [
+            "#3498db", "#e67e22", "#9b59b6", "#1abc9c", "#e74c3c", "#34495e"
+        ];
+
+        // Draw grid
+        ctx.strokeStyle = "#e1e4e8";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let g = 0; g <= 4; g++) {
+            const gy = padTop + (g / 4) * plotH;
+            ctx.moveTo(padLeft, gy);
+            ctx.lineTo(padLeft + plotW, gy);
+            const pct = (1.0 - g / 4) * 100;
+            ctx.fillStyle = "#7f8c8d";
+            ctx.font = "9px monospace";
+            ctx.textAlign = "right";
+            ctx.fillText(`${pct.toFixed(0)}%`, padLeft - 6, gy + 3);
+        }
+        ctx.stroke();
+
+        for (let j = 0; j < c; j++) {
+            const groupCenterX = padLeft + j * groupW + groupW / 2;
+            const startX = groupCenterX - (totalBarsPerGroup * barW) / 2;
+
+            // 1. Marginal baseline bar P(Y = y_j)
+            const margP = res.colSums[j] / res.N;
+            const mH = margP * plotH;
+            const mX = startX;
+            const mY = padTop + plotH - mH;
+
+            ctx.fillStyle = "#2c3e50";
+            ctx.fillRect(mX, mY, barW, mH);
+            ctx.strokeStyle = "#1a252f";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(mX, mY, barW, mH);
+
+            // 2. Conditional bars P(Y = y_j | X = x_i)
+            for (let i = 0; i < r; i++) {
+                const condP = res.rowCondProbs[i][j];
+                const cH = condP * plotH;
+                const cX = startX + (i + 1) * barW;
+                const cY = padTop + plotH - cH;
+
+                ctx.fillStyle = rowColors[i % rowColors.length];
+                ctx.fillRect(cX, cY, barW, cH);
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 0.5;
+                ctx.strokeRect(cX, cY, barW, cH);
+            }
+
+            // Category label
+            ctx.fillStyle = "#2c3e50";
+            ctx.font = "10px sans-serif";
+            ctx.textAlign = "center";
+            const colLabelShort = res.colLabels[j].length > 12 ? res.colLabels[j].slice(0, 10) + ".." : res.colLabels[j];
+            ctx.fillText(colLabelShort, groupCenterX, padTop + plotH + 16);
+        }
+
+        // Axes
+        ctx.strokeStyle = "#2c3e50";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(padLeft, padTop);
+        ctx.lineTo(padLeft, padTop + plotH);
+        ctx.lineTo(padLeft + plotW, padTop + plotH);
+        ctx.stroke();
+
+        ctx.fillStyle = "#2c3e50";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("Conditional Profiles P(Y | X) vs. Marginal Baseline P(Y) [Black Bar]", padLeft, padTop - 12);
+    }
+
+    /**
+     * Canvas 5: Interactive Causal DAG Studio
+     * Visualizes Fork (Confounder), Collider (Berkson's Paradox), Chain, and Mediator
+     */
+    function renderCausalDagCanvas() {
+        const canvas = dom.canvasCausalDag;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        ctx.fillStyle = "#fafbfc";
+        ctx.fillRect(0, 0, W, H);
+
+        const model = state.activeDagModel;
+
+        function drawNode(x, y, label, subtext, color = "#2980b9") {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 24, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.strokeStyle = "#2c3e50";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 13px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(label, x, y + 5);
+
+            if (subtext) {
+                ctx.fillStyle = "#2c3e50";
+                ctx.font = "10px sans-serif";
+                ctx.fillText(subtext, x, y + 38);
+            }
+        }
+
+        function drawArrow(fromX, fromY, toX, toY, label = "") {
+            const headlen = 10;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+
+            // Offset from node circles (radius 24)
+            const r = 24;
+            const startX = fromX + r * Math.cos(angle);
+            const startY = fromY + r * Math.sin(angle);
+            const endX = toX - r * Math.cos(angle);
+            const endY = toY - r * Math.sin(angle);
+
+            ctx.strokeStyle = "#34495e";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // Arrow head
+            ctx.fillStyle = "#34495e";
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+
+            if (label) {
+                ctx.fillStyle = "#7f8c8d";
+                ctx.font = "10px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(label, (fromX + toX) / 2, (fromY + toY) / 2 - 8);
+            }
+        }
+
+        if (model === "fork") {
+            // Confounder Fork: X <- Z -> Y
+            drawNode(W / 2, 60, "Z", "Common Cause (Confounder)", "#e67e22");
+            drawNode(W / 4, 180, "X", "Exposure / Strategy", "#2980b9");
+            drawNode((3 * W) / 4, 180, "Y", "Outcome / Breach", "#27ae60");
+
+            drawArrow(W / 2, 60, W / 4, 180, "Causes X");
+            drawArrow(W / 2, 60, (3 * W) / 4, 180, "Causes Y");
+
+            // Dashed spurious association arc
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = "#e74c3c";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(W / 4 + 24, 180);
+            ctx.lineTo((3 * W) / 4 - 24, 180);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = "#c0392b";
+            ctx.font = "bold 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Spurious Association (Backdoor Path X ← Z → Y)", W / 2, 215);
+
+            dom.dagDescription.innerHTML = "<strong>Confounder Fork ($X \\leftarrow Z \\rightarrow Y$):</strong> $Z$ acts as a common cause. Observational correlation between $X$ and $Y$ is biased by the backdoor path. Condition on $Z$ or execute an intervention $\\text{do}(X)$ to measure the true causal effect.";
+        } else if (model === "collider") {
+            // Collider: X -> Z <- Y
+            drawNode(W / 4, 60, "X", "Skill / Feature", "#2980b9");
+            drawNode((3 * W) / 4, 60, "Y", "Effort / Feature", "#27ae60");
+            drawNode(W / 2, 180, "Z", "Collider (e.g. Success)", "#8e44ad");
+
+            drawArrow(W / 4, 60, W / 2, 180, "");
+            drawArrow((3 * W) / 4, 60, W / 2, 180, "");
+
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = "#e74c3c";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(W / 4 + 24, 60);
+            ctx.lineTo((3 * W) / 4 - 24, 60);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = "#c0392b";
+            ctx.font = "bold 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Spurious Dependency Induced Conditioning on Collider Z!", W / 2, 35);
+
+            dom.dagDescription.innerHTML = "<strong>Collider / Inverted Fork ($X \\rightarrow Z \\leftarrow Y$):</strong> $X$ and $Y$ are marginally independent ($X \\perp Y$). Conditioning on collider $Z$ opens the path, creating an artificial negative correlation (Berkson's Fallacy / Selection Bias)!";
+        } else if (model === "chain") {
+            // Direct Causal Chain: X -> Y
+            drawNode(W / 3, 120, "X", "Direct Cause", "#2980b9");
+            drawNode((2 * W) / 3, 120, "Y", "Direct Effect", "#27ae60");
+            drawArrow(W / 3, 120, (2 * W) / 3, 120, "Direct Causal Link");
+
+            dom.dagDescription.innerHTML = "<strong>Direct Causal Chain ($X \\rightarrow Y$):</strong> $X$ has an unconfounded direct influence on $Y$. Intervening via $\\text{do}(X)$ directly changes the probability distribution of $Y$.";
+        } else if (model === "mediator") {
+            // Mediator: X -> M -> Y
+            drawNode(W / 4, 120, "X", "Exogenous Input", "#2980b9");
+            drawNode(W / 2, 120, "M", "Mediator", "#8e44ad");
+            drawNode((3 * W) / 4, 120, "Y", "Final Endpoint", "#27ae60");
+
+            drawArrow(W / 4, 120, W / 2, 120, "");
+            drawArrow(W / 2, 120, (3 * W) / 4, 120, "");
+
+            dom.dagDescription.innerHTML = "<strong>Mediator Chain ($X \\rightarrow M \\rightarrow Y$):</strong> $X$ causes $Y$ entirely through intermediate mechanism $M$. Conditioning on $M$ d-separates $X$ and $Y$, making them conditionally independent ($X \\perp Y \\mid M$).";
+        }
+
+        if (window.renderMathInElement) {
+            window.renderMathInElement(dom.dagDescription, {
+                delimiters: [{ left: '$', right: '$', display: false }]
+            });
+        }
+    }
+
     // =========================================================================
     // 7. SIMPSON'S PARADOX CAUSAL CONVOLUTION ENGINE
     // =========================================================================
@@ -987,8 +1323,6 @@
         if (!dom.simpsonContainer) return;
         const sp = PRESETS.simpson_paradox;
         const aggRes = computeContingencyAnalysis(sp.matrix, sp.rowLabels, sp.colLabels);
-        const sub1 = computeContingencyAnalysis(sp.stratified.strata[0].matrix, sp.rowLabels, sp.colLabels);
-        const sub2 = computeContingencyAnalysis(sp.stratified.strata[1].matrix, sp.rowLabels, sp.colLabels);
 
         let html = `
             <div class="stat-callout" style="background:#fcf3cf; border-left:5px solid #f39c12; margin-top:1.5rem;">
@@ -1050,6 +1384,11 @@
         `;
 
         dom.simpsonContainer.innerHTML = html;
+        if (window.renderMathInElement) {
+            window.renderMathInElement(dom.simpsonContainer, {
+                delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }]
+            });
+        }
     }
 
     // =========================================================================
@@ -1062,7 +1401,6 @@
 
         if (!res) return;
 
-        // Update Top Metrics
         dom.nTotalVal.textContent = res.N.toLocaleString();
         dom.dfVal.textContent = res.df;
         dom.chi2Val.textContent = res.chi2.toFixed(4);
@@ -1074,14 +1412,12 @@
             dom.pValDisplay.textContent = res.pValue.toFixed(6);
         }
 
-        // Decision Badge
         if (res.isIndependent) {
-            dom.decisionBadge.innerHTML = `<span style="background:#27ae60; color:#fff; padding:4px 10px; border-radius:4px; font-weight:bold;">STATISTICALLY INDEPENDENT (Fail to Reject H0)</span>`;
+            dom.decisionBadge.innerHTML = `<span style="background:#27ae60; color:#fff; padding:6px 14px; border-radius:4px; font-weight:bold; display:inline-block;">STATISTICALLY INDEPENDENT (Fail to Reject H0 at α = ${state.alpha})</span>`;
         } else {
-            dom.decisionBadge.innerHTML = `<span style="background:#c0392b; color:#fff; padding:4px 10px; border-radius:4px; font-weight:bold;">STATISTICALLY DEPENDENT (Reject H0 at α = ${state.alpha})</span>`;
+            dom.decisionBadge.innerHTML = `<span style="background:#c0392b; color:#fff; padding:6px 14px; border-radius:4px; font-weight:bold; display:inline-block;">STATISTICALLY DEPENDENT (Reject H0 at α = ${state.alpha})</span>`;
         }
 
-        // Additional stats
         dom.g2Val.textContent = `${res.G2.toFixed(3)} (${res.mutualInfoBits.toFixed(3)} bits)`;
         dom.cramerVVal.textContent = res.cramersV.toFixed(4);
 
@@ -1091,15 +1427,13 @@
         else if (res.cramersV > 0.1) effectStr = "Weak Association";
         dom.cramerEffectVal.textContent = effectStr;
 
-        // Cochran Warning
         if (res.percentUnder5 > 20.0 || res.minExpected < 1.0) {
             dom.cochranWarning.style.display = "block";
-            dom.cochranWarning.innerHTML = `<strong>Warning (Cochran's Criterion Violation):</strong> ${res.cellsUnder5} out of ${res.totalCells} cells (${res.percentUnder5.toFixed(1)}%) have expected frequency e_ij &lt; 5. Minimum e_ij = ${res.minExpected.toFixed(2)}. Chi-square asymptotic approximation may be unreliable; consider Exact tests or category pooling.`;
+            dom.cochranWarning.innerHTML = `<strong>Warning (Cochran's Criterion Violation):</strong> ${res.cellsUnder5} out of ${res.totalCells} cells (${res.percentUnder5.toFixed(1)}%) have expected frequency e_ij &lt; 5. Minimum e_ij = ${res.minExpected.toFixed(2)}. Chi-square asymptotic approximation may be unreliable; consider Exact tests, Monte Carlo simulation, or category pooling.`;
         } else {
             dom.cochranWarning.style.display = "none";
         }
 
-        // 2x2 Fisher Card
         if (res.r === 2 && res.c === 2) {
             dom.fisher2x2Card.style.display = "block";
             dom.fisherPVal.textContent = res.fisherPVal < 0.0001 ? "< 0.0001" : res.fisherPVal.toFixed(6);
@@ -1107,11 +1441,27 @@
             dom.fisher2x2Card.style.display = "none";
         }
 
-        // Re-render subviews
+        // Narrative Report
+        if (dom.narrativeInterpretationCard) {
+            dom.narrativeInterpretationCard.innerHTML = generateInterpretationReport(res);
+            if (window.renderMathInElement) {
+                window.renderMathInElement(dom.narrativeInterpretationCard, {
+                    delimiters: [{ left: '$', right: '$', display: false }]
+                });
+            }
+        }
+
+        // Reset Monte Carlo result
+        if (dom.permResultDisplay) {
+            dom.permResultDisplay.innerHTML = `<span style="color:#7f8c8d; font-size:0.9rem;">Click button below to execute 1,000 non-parametric shuffles.</span>`;
+        }
+
         renderActiveTableDisplay(res);
         renderMosaicCanvas(res);
         renderChi2DistCanvas(res);
         renderResidualHeatmap(res);
+        renderCondMarginalCanvas(res);
+        renderCausalDagCanvas();
     }
 
     // =========================================================================
@@ -1119,7 +1469,6 @@
     // =========================================================================
 
     function attachEventListeners() {
-        // Preset selector
         dom.presetSelect.addEventListener('change', (e) => {
             const key = e.target.value;
             state.activePreset = key;
@@ -1138,13 +1487,11 @@
             updateAll();
         });
 
-        // Significance Alpha select
         dom.alphaSelect.addEventListener('change', (e) => {
             state.alpha = parseFloat(e.target.value);
             updateAll();
         });
 
-        // Row/Col variable name inputs
         dom.rowVarInput.addEventListener('change', (e) => {
             state.rowVar = e.target.value.trim() || "Row Factor (X)";
             renderTableEditor();
@@ -1156,7 +1503,6 @@
             updateAll();
         });
 
-        // Add Row
         dom.addRowBtn.addEventListener('click', () => {
             const newRIdx = state.matrix.length + 1;
             const c = state.matrix[0].length;
@@ -1166,7 +1512,6 @@
             updateAll();
         });
 
-        // Delete Row
         dom.delRowBtn.addEventListener('click', () => {
             if (state.matrix.length > 2) {
                 state.matrix.pop();
@@ -1178,7 +1523,6 @@
             }
         });
 
-        // Add Column
         dom.addColBtn.addEventListener('click', () => {
             const newCIdx = state.matrix[0].length + 1;
             state.colLabels.push(`Category Y${newCIdx}`);
@@ -1189,7 +1533,6 @@
             updateAll();
         });
 
-        // Delete Column
         dom.delColBtn.addEventListener('click', () => {
             if (state.matrix[0].length > 2) {
                 state.colLabels.pop();
@@ -1203,7 +1546,6 @@
             }
         });
 
-        // Reset Table
         dom.resetTableBtn.addEventListener('click', () => {
             const p = PRESETS[state.activePreset];
             state.rowLabels = [...p.rowLabels];
@@ -1213,7 +1555,6 @@
             updateAll();
         });
 
-        // Table Perspective Tabs
         document.querySelectorAll('.table-tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.table-tab-btn').forEach(b => b.classList.remove('active'));
@@ -1225,14 +1566,48 @@
             });
         });
 
-        // CSV Parser
+        // Monte Carlo Permutation Test Button
+        if (dom.runPermutationBtn) {
+            dom.runPermutationBtn.addEventListener('click', () => {
+                if (!state.analysisResults) return;
+                dom.permResultDisplay.innerHTML = `<span style="color:#2980b9;">Executing 1,000 Monte Carlo shuffles...</span>`;
+                setTimeout(() => {
+                    const t0 = performance.now();
+                    const pMC = monteCarloPermutationTest(
+                        state.matrix,
+                        state.analysisResults.rowSums,
+                        state.analysisResults.colSums,
+                        state.analysisResults.N,
+                        state.analysisResults.chi2,
+                        1000
+                    );
+                    const elapsed = (performance.now() - t0).toFixed(1);
+                    dom.permResultDisplay.innerHTML = `
+                        <strong>Empirical Permutation P-Value (B = 1,000):</strong> 
+                        <span style="font-family:monospace; color:${pMC < 0.05 ? '#c0392b' : '#27ae60'}; font-size:1.1rem; font-weight:bold;">${pMC.toFixed(4)}</span> 
+                        <small style="color:#7f8c8d;">(${elapsed} ms)</small><br>
+                        <small style="color:#2c3e50;">Confirms ${pMC < 0.05 ? 'strong rejection of independence' : 'consistency with independence'} without relying on large-sample normal approximations.</small>
+                    `;
+                }, 10);
+            });
+        }
+
+        // Causal DAG Model Selector
+        if (dom.dagSelect) {
+            dom.dagSelect.addEventListener('change', (e) => {
+                state.activeDagModel = e.target.value;
+                renderCausalDagCanvas();
+            });
+        }
+
+        // CSV / Triplet Parser
         if (dom.parseCsvBtn) {
             dom.parseCsvBtn.addEventListener('click', () => {
                 const text = dom.csvInputArea.value.trim();
                 if (!text) return;
                 const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                 if (lines.length < 2) {
-                    alert("Please paste at least two rows of paired data.");
+                    alert("Please paste at least two rows of observations.");
                     return;
                 }
 
@@ -1242,11 +1617,16 @@
 
                 lines.forEach(line => {
                     const parts = line.split(/[,\t]+/).map(p => p.trim());
-                    if (parts.length >= 2) {
-                        const rVal = parts[0];
-                        const cVal = parts[1];
-                        rSet.add(rVal);
-                        cSet.add(cVal);
+                    if (parts.length >= 3 && !isNaN(Number(parts[2]))) {
+                        // Weighted triplet format: X, Y, Count
+                        const rVal = parts[0], cVal = parts[1], count = Math.max(0, parseInt(parts[2], 10) || 0);
+                        rSet.add(rVal); cSet.add(cVal);
+                        const key = `${rVal}|||${cVal}`;
+                        pairCounts[key] = (pairCounts[key] || 0) + count;
+                    } else if (parts.length >= 2) {
+                        // Raw pair format: X, Y
+                        const rVal = parts[0], cVal = parts[1];
+                        rSet.add(rVal); cSet.add(cVal);
                         const key = `${rVal}|||${cVal}`;
                         pairCounts[key] = (pairCounts[key] || 0) + 1;
                     }
@@ -1293,18 +1673,16 @@
                 const N = parseInt(dom.synthNInput.value, 10) || 400;
                 const dep = parseFloat(dom.synthDepSlider.value);
                 const r = 3, c = 3;
-                const rLabels = ["Feature Alpha", "Feature Beta", "Feature Gamma"];
-                const cLabels = ["Response 1", "Response 2", "Response 3"];
+                const rLabels = ["Threat Level Low", "Threat Level Med", "Threat Level High"];
+                const cLabels = ["Response Standard", "Response Elevated", "Response Critical"];
                 const newMatrix = [ [0,0,0], [0,0,0], [0,0,0] ];
 
                 for (let k = 0; k < N; k++) {
                     let rIdx = Math.floor(Math.random() * r);
                     let cIdx;
                     if (Math.random() < dep) {
-                        // Coupled deterministically with probability 'dep'
                         cIdx = rIdx;
                     } else {
-                        // Independent random assignment
                         cIdx = Math.floor(Math.random() * c);
                     }
                     newMatrix[rIdx][cIdx]++;
@@ -1312,8 +1690,8 @@
 
                 state.rowLabels = rLabels;
                 state.colLabels = cLabels;
-                state.rowVar = "Synthetic Generator (X)";
-                state.colVar = "Synthetic Response (Y)";
+                state.rowVar = "Simulated Threat Category (X)";
+                state.colVar = "SOC Response Posture (Y)";
                 state.matrix = newMatrix;
                 dom.rowVarInput.value = state.rowVar;
                 dom.colVarInput.value = state.colVar;
@@ -1337,10 +1715,6 @@
             }
         });
     }
-
-    // =========================================================================
-    // 10. DOM READY BOOTSTRAP
-    // =========================================================================
 
     window.addEventListener('DOMContentLoaded', () => {
         initDOM();

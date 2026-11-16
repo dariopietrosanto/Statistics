@@ -80,23 +80,23 @@
                 <li>
                     <strong>Theoretical Expected Frequencies Under Independence:</strong>
                     Derivation of $e_{ij} = \frac{n_{i\cdot} n_{\cdot j}}{N}$ under the null hypothesis $H_0: P(X, Y) = P(X)P(Y)$, 
-                    computation of raw residuals $(n_{ij} - e_{ij})$, Pearson residuals $r_{ij} = \frac{n_{ij} - e_{ij}}{\sqrt{e_{ij}}}$, and Haberman's adjusted standardized residuals $z_{ij} \sim \mathcal{N}(0, 1)$.
+                    computation of raw residuals $(n_{ij} - e_{ij})$, Pearson residuals $r_{ij} = \frac{n_{ij} - e_{ij}}{\sqrt{e_{ij}}}$, Haberman's adjusted standardized residuals $z_{ij} \sim \mathcal{N}(0, 1)$, and individual cell $\chi^2$ contributions.
                 </li>
                 <li>
                     <strong>Inferential Hypothesis Testing & Exact P-Values:</strong>
                     Computation of Pearson's Chi-Square statistic $\chi^2 = \sum \frac{(n_{ij} - e_{ij})^2}{e_{ij}}$ with degrees of freedom $\text{df} = (r - 1)(c - 1)$, 
                     Likelihood Ratio deviance ($G^2$ statistic / Mutual Information), exact $p$-values computed via incomplete gamma functions (Lanczos approximation and Lentz continued fractions), 
-                    Fisher's exact test for $2 \times 2$ matrices, and effect size metrics (Cramér's $V$, Tschuprow's $T$, Contingency Coefficient $C$).
+                    non-parametric Monte Carlo permutation testing ($B = 1,000$ resamples), Fisher's exact test for $2 \times 2$ matrices, and effect size metrics (Cramér's $V$, Tschuprow's $T$, Contingency Coefficient $C$).
                 </li>
                 <li>
                     <strong>Theoretical Concepts of Independence in Probability vs. Statistics:</strong>
                     Rigorous demarcation between population-level measure-theoretic independence ($P(A \cap B) = P(A)P(B)$) and finite-sample statistical independence, 
-                    accounting for stochastic noise, sample size scaling, and Cochran's asymptotic validity criteria ($e_{ij} \ge 5$).
+                    accounting for stochastic noise, sample size scaling, characteristic function factorizations, and Cochran's asymptotic validity criteria ($e_{ij} \ge 5$).
                 </li>
                 <li>
                     <strong>Statistical Association vs. Causality:</strong>
                     Epistemological exploration of Reichenbach's Common Cause Principle, confounding bias, <strong>Simpson's Paradox</strong> (demonstrated through an interactive stratification model), 
-                    and Judea Pearl's Causal Hierarchy (Association $P(Y \mid X)$ vs. Intervention $P(Y \mid \text{do}(X))$).
+                    and Judea Pearl's Causal Hierarchy (Association $P(Y \mid X)$ vs. Intervention $P(Y \mid \text{do}(X))$ vs. Counterfactuals) supported by an interactive Causal DAG Studio.
                 </li>
             </ol>
         </section>
@@ -169,6 +169,7 @@
                 <button class="table-tab-btn" data-tab="col_cond">4. Col Conditional $P(X \mid Y)$</button>
                 <button class="table-tab-btn" data-tab="expected">5. Expected Values ($e_{ij}$)</button>
                 <button class="table-tab-btn" data-tab="residuals">6. Standardized Residuals ($z_{ij}$)</button>
+                <button class="table-tab-btn" data-tab="chi2_contrib">7. $\chi^2$ Contributions ($\Delta \chi^2_{ij}$)</button>
             </div>
 
             <div style="overflow-x:auto;">
@@ -201,7 +202,7 @@
                     <small style="color:#7f8c8d;">Critical: <span id="crit-val-display" style="font-family:monospace;">21.0261</span></small>
                 </div>
                 <div class="metric-card" style="border-top: 3px solid #e74c3c;">
-                    <div style="font-size:0.8rem; color:#7f8c8d; text-transform:uppercase; font-weight:bold;">Exact P-Value</div>
+                    <div style="font-size:0.8rem; color:#7f8c8d; text-transform:uppercase; font-weight:bold;">Exact Asymptotic P-Value</div>
                     <div id="p-val-display" class="metric-val" style="color:#c0392b;">&lt; 0.0001</div>
                     <small style="color:#7f8c8d;">P(χ²_df ≥ χ²_obs)</small>
                 </div>
@@ -209,11 +210,17 @@
 
             <!-- FORMAL DECISION CALLOUT -->
             <div style="margin: 1.5rem 0; text-align:center;">
-                <div style="font-size:0.95rem; margin-bottom:0.4rem; font-weight:bold; color:#2c3e50;">Formal Hypothesis Decision:</div>
-                <div id="decision-badge" style="font-size:1.15rem;"></div>
+                <div style="font-size:0.95rem; margin-bottom:0.4rem; font-weight:bold; color:#2c3e50;">Formal Statistical Decision:</div>
+                <div id="decision-badge"></div>
             </div>
 
-            <!-- COMPREHENSIVE STATISTICAL ASSOCIATION MEASURES -->
+            <!-- APA-STYLE NARRATIVE INTERPRETATION CARD -->
+            <div class="panel" style="background:#fcfcfc; border-left:4px solid #2980b9; margin: 1.5rem 0;">
+                <h4 style="margin-top:0; color:#2c3e50;">Automated Scientific Interpretation Report (APA Style)</h4>
+                <div id="narrative-interpretation-card"></div>
+            </div>
+
+            <!-- COMPREHENSIVE STATISTICAL ASSOCIATION MEASURES & PERMUTATION TEST -->
             <div class="layout-grid" style="margin-top:1.5rem;">
                 <div style="background:#f8f9fa; padding:1.2rem; border-radius:4px; border:1px solid #e1e8ed;">
                     <h4 style="margin-top:0; color:#2c3e50;">Measures of Nominal Association (Effect Size)</h4>
@@ -233,19 +240,31 @@
                     </p>
                 </div>
 
-                <div id="fisher-2x2-card" style="background:#f8f9fa; padding:1.2rem; border-radius:4px; border:1px solid #e1e8ed; display:none;">
-                    <h4 style="margin-top:0; color:#8e44ad;">2 × 2 Table Exact Statistics</h4>
-                    <p style="font-size:0.9rem; margin-bottom:0.5rem;">
-                        <strong>Fisher's Exact Test P-Value:</strong> <span id="fisher-p-val" style="font-family:monospace; font-weight:bold; color:#8e44ad; font-size:1.1rem;">-</span>
-                    </p>
-                    <p style="font-size:0.82rem; color:#7f8c8d;">
-                        Hypergeometric exact probability valid even with zero cell counts or small $N$, without reliance on asymptotic central limit approximations.
+                <div style="background:#f8f9fa; padding:1.2rem; border-radius:4px; border:1px solid #e1e8ed;">
+                    <h4 style="margin-top:0; color:#8e44ad;">Non-Parametric Resampling Validation</h4>
+                    <div id="perm-result-display" style="margin-bottom:0.8rem;">
+                        <span style="color:#7f8c8d; font-size:0.9rem;">Click button below to execute 1,000 non-parametric shuffles.</span>
+                    </div>
+                    <button id="run-permutation-btn" class="btn-primary" style="background:#8e44ad; font-size:0.85rem;">Run Monte Carlo Permutation Test (B = 1,000)</button>
+                    <p style="font-size:0.8rem; color:#7f8c8d; margin-top:0.6rem;">
+                        Conditioning strictly on marginal totals, this tests the null hypothesis by randomly shuffling column assignments, providing exact finite-sample inference free of asymptotic assumptions.
                     </p>
                 </div>
             </div>
+
+            <!-- 2x2 Fisher Card -->
+            <div id="fisher-2x2-card" style="background:#f8f9fa; padding:1.2rem; border-radius:4px; border:1px solid #e1e8ed; margin-top:1.5rem; display:none;">
+                <h4 style="margin-top:0; color:#8e44ad;">2 × 2 Table Exact Statistics</h4>
+                <p style="font-size:0.9rem; margin-bottom:0.5rem;">
+                    <strong>Fisher's Exact Test P-Value:</strong> <span id="fisher-p-val" style="font-family:monospace; font-weight:bold; color:#8e44ad; font-size:1.1rem;">-</span>
+                </p>
+                <p style="font-size:0.82rem; color:#7f8c8d;">
+                    Hypergeometric exact probability valid even with zero cell counts or small $N$, without reliance on asymptotic central limit approximations.
+                </p>
+            </div>
         </section>
 
-        <!-- VISUAL ANALYTICS: MOSAIC PLOT, CHI2 CURVE & RESIDUAL HEATMAP -->
+        <!-- VISUAL ANALYTICS: MOSAIC, CHI2 CURVE, RESIDUAL HEATMAP & CONDITIONAL PROFILES -->
         <section class="panel" style="margin-bottom: 2rem;">
             <h2>3. Visual Analytics Studio</h2>
 
@@ -262,60 +281,56 @@
                 </div>
             </div>
 
-            <div style="margin-top:1.5rem;">
-                <h4 style="text-align:center; color:#2c3e50; margin-bottom:0.3rem;">Standardized Haberman Residuals Heatmap ($z_{ij}$)</h4>
-                <p style="text-align:center; font-size:0.85rem; color:#7f8c8d; margin-top:0;">Cell-by-cell identification of localized dependencies: $|z| > 1.96$ ($p < 0.05$), $|z| > 2.58$ ($p < 0.01$)</p>
-                <canvas id="canvas-residual-heatmap" width="700" height="260"></canvas>
-            </div>
-        </section>
-
-        <!-- ALTERNATIVE DATA INGESTION: CSV PARSER & SYNTHETIC GENERATOR -->
-        <section class="panel" style="margin-bottom: 2rem;">
-            <h2>4. Alternative Data Ingestion & Synthetic Generation</h2>
-
-            <div class="layout-grid">
-                <!-- CSV / Raw Stream Parser -->
+            <div class="layout-grid" style="margin-top:1.5rem;">
                 <div>
-                    <h4 style="margin-top:0; color:#2c3e50;">Import Raw Bivariate Stream / CSV</h4>
-                    <p style="font-size:0.85rem; color:#7f8c8d;">Paste paired categorical observations (comma or tab delimited, one pair per line):</p>
-                    <textarea id="csv-input-area" rows="6" style="font-family:monospace; font-size:0.85rem;" placeholder="Phishing, WebDMZ&#10;SQLi, Database&#10;Phishing, WebDMZ&#10;ZeroDay, CloudIAM&#10;SQLi, Application&#10;Phishing, Secrets&#10;ZeroDay, Database"></textarea>
-                    <button id="parse-csv-btn" class="btn-primary" style="margin-top:0.5rem;">Parse & Build Contingency Matrix</button>
+                    <h4 style="text-align:center; color:#2c3e50; margin-bottom:0.3rem;">Conditional $P(Y \mid X)$ vs. Marginal Baseline $P(Y)$</h4>
+                    <p style="text-align:center; font-size:0.85rem; color:#7f8c8d; margin-top:0;">Black bar = Unconditional $P(Y)$. Coloured bars = Conditional $P(Y \mid X)$. Fluctuation = Dependence!</p>
+                    <canvas id="canvas-cond-marginal" width="500" height="280"></canvas>
                 </div>
-
-                <!-- Synthetic Bivariate Generator -->
                 <div>
-                    <h4 style="margin-top:0; color:#2c3e50;">Generate Synthetic Bivariate Distribution</h4>
-                    <p style="font-size:0.85rem; color:#7f8c8d;">Simulate $N$ bivariate observations with controlled coupling parameter $\lambda \in [0, 1]$:</p>
-                    <div class="control-group">
-                        <label for="synth-n-input">Sample Size ($N$):</label>
-                        <input type="number" id="synth-n-input" min="50" max="5000" step="50" value="400">
-                    </div>
-                    <div class="control-group">
-                        <label for="synth-dep-slider">Dependence Coupling ($\lambda$): <span id="synth-dep-val" style="color:#e74c3c; font-family:monospace;">0.60</span></label>
-                        <input type="range" id="synth-dep-slider" min="0.0" max="1.0" step="0.05" value="0.60">
-                        <small style="color:#7f8c8d;">λ = 0: Pure Independence ($P(X, Y) = P(X)P(Y)$) | λ = 1: Deterministic coupling</small>
-                    </div>
-                    <button id="generate-synth-btn" class="btn-success">Generate Synthetic Table</button>
+                    <h4 style="text-align:center; color:#2c3e50; margin-bottom:0.3rem;">Standardized Haberman Residuals Heatmap ($z_{ij}$)</h4>
+                    <p style="text-align:center; font-size:0.85rem; color:#7f8c8d; margin-top:0;">Cell-by-cell identification of localized dependencies: $|z| > 1.96$ ($p < 0.05$), $|z| > 2.58$ ($p < 0.01$)</p>
+                    <canvas id="canvas-residual-heatmap" width="500" height="280"></canvas>
                 </div>
             </div>
         </section>
 
-        <!-- SIMPSON'S PARADOX & CAUSAL CONVOLUTION -->
+        <!-- CAUSAL DAG STUDIO & EPISTEMOLOGICAL DEMARCATION -->
         <section class="panel" style="margin-bottom: 2rem;">
-            <h2>5. Epistemological Studio: Statistical Association vs. Causality</h2>
+            <h2>4. Epistemological Studio: Statistical Association vs. Causality</h2>
             
-            <div id="simpson-container"></div>
+            <div class="layout-grid">
+                <div>
+                    <div class="control-group">
+                        <label for="dag-select">Select Causal Directed Acyclic Graph (DAG) Topology:</label>
+                        <select id="dag-select">
+                            <option value="fork" selected>Common Cause / Confounder Fork (X ← Z → Y)</option>
+                            <option value="collider">Collider / Inverted Fork (X → Z ← Y) [Selection Bias]</option>
+                            <option value="chain">Direct Causal Chain (X → Y)</option>
+                            <option value="mediator">Mediator Mechanism (X → M → Y)</option>
+                        </select>
+                    </div>
+                    <div id="dag-description" style="font-size:0.92rem; color:#2c3e50; line-height:1.5; margin-bottom:1rem;"></div>
+                </div>
+                <div>
+                    <canvas id="canvas-causal-dag" width="480" height="240"></canvas>
+                </div>
+            </div>
+
+            <!-- SIMPSON'S PARADOX LABORATORY -->
+            <div id="simpson-container" style="margin-top:1.5rem;"></div>
 
             <div class="stat-callout" style="margin-top:1.5rem;">
                 <h4 style="margin-top:0; color:#27ae60;">Theoretical Foundations: Independence in Probability vs. Statistics</h4>
                 <p>
                     <strong>1. Independence in Probability Theory (Population / Generative Model):</strong><br>
-                    Let $(\Omega, \mathcal{F}, \mathbb{P})$ be a probability space. Two events $A, B \in \mathcal{F}$ are independent if and only if:
-                    $$\mathbb{P}(A \cap B) = \mathbb{P}(A) \cdot \mathbb{P}(B)$$
-                    For discrete random variables $X$ taking values in $\{x_1, \dots, x_r\}$ and $Y$ taking values in $\{y_1, \dots, y_c\}$, independence requires the joint probability mass function to factorize identically as the product of marginals:
+                    Let $(\Omega, \mathcal{F}, \mathbb{P})$ be a probability space. Two sub-$\sigma$-algebras $\mathcal{G}, \mathcal{H} \subseteq \mathcal{F}$ are independent if $\mathbb{P}(G \cap H) = \mathbb{P}(G)\mathbb{P}(H)$ for all $G \in \mathcal{G}, H \in \mathcal{H}$. 
+                    For discrete random variables $X$ and $Y$, independence requires the joint probability mass function to factorize identically as the product of marginals:
                     $$P(X = x_i, Y = y_j) = P(X = x_i) \cdot P(Y = y_j) \quad \forall (i, j)$$
                     Equivalently, the conditional distribution of $Y$ given $X$ is completely invariant to the realization of $X$:
                     $$P(Y = y_j \mid X = x_i) = P(Y = y_j) \quad \forall x_i \text{ with } P(X = x_i) > 0$$
+                    In terms of characteristic functions, independence holds if and only if:
+                    $$\varphi_{X, Y}(t_1, t_2) = \mathbb{E}\left[ e^{i(t_1 X + t_2 Y)} \right] = \varphi_X(t_1) \cdot \varphi_Y(t_2) \quad \forall (t_1, t_2) \in \mathbb{R}^2$$
                 </p>
                 <p>
                     <strong>2. Independence in Statistics (Finite Samples & Inferential Sampling Variability):</strong><br>
@@ -327,6 +342,8 @@
                     <em>Are the observed discrepancies $(n_{ij} - e_{ij})$ sufficiently small to be attributed entirely to random sampling error under $H_0$, or are they so large that $H_0$ is implausible?</em>
                     By the Central Limit Theorem and Fisher-Pearson asymptotics, the normalized squared sum of deviations converges in distribution:
                     $$\chi^2 = \sum_{i=1}^r \sum_{j=1}^c \frac{(n_{ij} - e_{ij})^2}{e_{ij}} \xrightarrow{d} \chi^2_{(r-1)(c-1)} \quad \text{as } N \to \infty$$
+                    <strong>Why $\text{df} = (r - 1)(c - 1)$?</strong> An $r \times c$ table has $rc - 1$ unconstrained cell probabilities (since $\sum p_{ij} = 1$). Under $H_0$, the model estimates $r - 1$ independent row parameters and $c - 1$ independent column parameters. Subtracting the estimated parameters from the total degrees of freedom yields:
+                    $$\text{df} = (rc - 1) - (r - 1) - (c - 1) = rc - r - c + 1 = (r - 1)(c - 1)$$
                 </p>
                 <p style="margin-bottom:0;">
                     <strong>3. Association vs. Causality (The Ladder of Causation):</strong><br>
@@ -335,6 +352,35 @@
                     As formalized by Judea Pearl, statistical analysis of contingency tables operates strictly at <strong>Level 1 of the Causal Hierarchy (Associational: "Seeing" $P(Y \mid X)$)</strong>. 
                     Inferring <strong>Level 2 (Interventional: "Doing" $P(Y \mid \text{do}(X))$)</strong> requires structural causal models, directed acyclic graphs (DAGs), or randomized controlled trials (RCTs) to block confounding backdoor paths ($X \leftarrow Z \to Y$).
                 </p>
+            </div>
+        </section>
+
+        <!-- ALTERNATIVE DATA INGESTION: CSV PARSER & SYNTHETIC GENERATOR -->
+        <section class="panel" style="margin-bottom: 2rem;">
+            <h2>5. Alternative Data Ingestion & Synthetic Generation</h2>
+
+            <div class="layout-grid">
+                <div>
+                    <h4 style="margin-top:0; color:#2c3e50;">Import Raw Bivariate Stream / Weighted Triplets</h4>
+                    <p style="font-size:0.85rem; color:#7f8c8d;">Supports paired observations (<code>X, Y</code>) or weighted triplets (<code>X, Y, Count</code>):</p>
+                    <textarea id="csv-input-area" rows="6" style="font-family:monospace; font-size:0.85rem;" placeholder="Phishing, WebDMZ, 75&#10;SQLi, Database, 45&#10;ZeroDay, CloudIAM, 25&#10;Phishing, Database, 5&#10;Insider, CloudIAM, 40&#10;DDoS, WebDMZ, 40"></textarea>
+                    <button id="parse-csv-btn" class="btn-primary" style="margin-top:0.5rem;">Parse & Build Contingency Matrix</button>
+                </div>
+
+                <div>
+                    <h4 style="margin-top:0; color:#2c3e50;">Generate Synthetic Bivariate Distribution</h4>
+                    <p style="font-size:0.85rem; color:#7f8c8d;">Simulate $N$ observations with controlled coupling parameter $\lambda \in [0, 1]$:</p>
+                    <div class="control-group">
+                        <label for="synth-n-input">Sample Size ($N$):</label>
+                        <input type="number" id="synth-n-input" min="50" max="5000" step="50" value="400">
+                    </div>
+                    <div class="control-group">
+                        <label for="synth-dep-slider">Dependence Coupling ($\lambda$): <span id="synth-dep-val" style="color:#e74c3c; font-family:monospace;">0.60</span></label>
+                        <input type="range" id="synth-dep-slider" min="0.0" max="1.0" step="0.05" value="0.60">
+                        <small style="color:#7f8c8d;">λ = 0: Pure Independence ($P(X, Y) = P(X)P(Y)$) | λ = 1: Deterministic coupling</small>
+                    </div>
+                    <button id="generate-synth-btn" class="btn-success">Generate Synthetic Table</button>
+                </div>
             </div>
         </section>
 
@@ -369,6 +415,18 @@
     <span style="color:#e74c3c;">const</span> s = df / 2.0, x = chi2 / 2.0;
     <span style="color:#e74c3c;">return</span> x &lt; s + 1.0 ? 1.0 - gammaLowerP(s, x) : gammaUpperQ(s, x);
 }
+
+<span style="color:#85929e;">// 3. Monte Carlo Permutation Test (Exact Non-Parametric Inference)</span>
+<span style="color:#e74c3c;">function</span> <span style="color:#3498db;">monteCarloPermutationTest</span>(matrix, rSums, cSums, N, chi2Obs, B = 1000) {
+    <span style="color:#85929e;">// Shuffles column categories across fixed row marginals B times</span>
+    <span style="color:#e74c3c;">let</span> extreme = 0;
+    <span style="color:#e74c3c;">for</span> (<span style="color:#e74c3c;">let</span> b = 0; b &lt; B; b++) {
+        shuffle(colArray);
+        <span style="color:#e74c3c;">const</span> curChi2 = evaluatePermutedChi2(colArray, rSums, cSums, N);
+        <span style="color:#e74c3c;">if</span> (curChi2 &gt;= chi2Obs - 1e-9) extreme++;
+    }
+    <span style="color:#e74c3c;">return</span> (1.0 + extreme) / (1.0 + B);
+}
             </div>
         </section>
     </main>
@@ -377,6 +435,6 @@
         <p>Dario Pietrosanto (2055042) — Academic Cryptography & Applied Statistics Repository &copy; 2026</p>
     </footer>
 
-    <script src="script.js?v=1"></script>
+    <script src="script.js?v=2"></script>
 </body>
 </html>
